@@ -1,44 +1,20 @@
-# 房仲 AI 預約系統
+# 郭彥坤｜台南房仲顧問 個人官網
 
-這個 ZIP 是可獨立執行的課堂版專案，包含：
+台南房仲顧問的個人形象網站與線上預約系統，專營東橋重劃區。
+以 Next.js 建置，同一套程式同時提供對外形象網站與內部預約管理。
 
-- 房仲電子名片：`/card`
-- 客戶線上預約：`/card/booking`
-- 預約管理後台：`/admin/appointments`
-- 本機 JSON 資料庫
-- 時段撞號防護
-- 客戶溫度與追蹤建議
-- 確認信 HTML 預覽
+## 頁面
 
-預設不需要 API key、資料庫或第三方帳號，也不會真的寄信。
+| 路徑 | 用途 | 正式站狀態 |
+| --- | --- | --- |
+| `/` | 形象網站首頁（服務區域、戰績、服務項目、預約） | 公開 |
+| `/card` | 電子名片，適合傳 LINE 或印成 QR Code | 公開 |
+| `/card/booking` | 客戶線上選時段預約 | 預設關閉 |
+| `/admin/appointments` | 預約管理後台（客戶溫度分級、追蹤建議） | 預設關閉，需密碼 |
 
-## 最簡單的執行方式
+## 本機執行
 
-### Claude Code
-
-1. 解壓縮 ZIP。
-2. 在 Claude Code 開啟 `realtor-ai-booking` 資料夾。
-3. 輸入：`請執行`
-
-Claude Code 會依照 `CLAUDE.md` 自動安裝、檢查、建置並啟動。
-
-### Codex
-
-1. 解壓縮 ZIP。
-2. 在 Codex 開啟 `realtor-ai-booking` 資料夾。
-3. 輸入：`請執行`
-
-Codex 會依照 `AGENTS.md` 自動安裝、檢查、建置並啟動。
-
-## 電腦需求
-
-- Windows 10/11 或 macOS
-- Node.js 20.9 以上
-- npm 10 以上
-
-Node.js 官方下載：[https://nodejs.org/](https://nodejs.org/)
-
-## 手動執行
+需要 Node.js 20.9 以上。
 
 ```bash
 npm ci
@@ -46,29 +22,46 @@ npm run check
 npm run dev
 ```
 
-開啟：
+開啟 http://localhost:3000
 
-- [http://localhost:3000/card](http://localhost:3000/card)
-- [http://localhost:3000/card/booking](http://localhost:3000/card/booking)
-- [http://localhost:3000/admin/appointments](http://localhost:3000/admin/appointments)
+想在本機測試完整預約流程，建立 `.env.local`：
 
-## 修改自己的資料
+```
+BOOKING_ENABLED=true
+ADMIN_PASSWORD=自己設一組密碼
+```
 
-主要設定集中在：
+## 為什麼預約系統預設是關閉的
 
-- `src/lib/profile.ts`：姓名、電話、地址、社群連結
-- `src/lib/booking.ts`：營業時間、開放天數、需求選項
-- `src/app/globals.css`：品牌色與畫面樣式
-- `public/card/abin.jpg`：個人照片
+這不是還沒做完，是刻意的。目前的實作有兩個限制，在正式環境會出問題：
 
-## 資料位置
+1. **預約資料存在本機 JSON 檔**（`src/lib/appointment-store.ts`）。
+   Vercel 等無伺服器平台的檔案系統唯讀且不持久，客戶送出的預約會寫入失敗或消失。
+2. **後台雖已加上密碼**，但單一密碼的 HTTP Basic 驗證只適合暫時使用，
+   長期仍應改為正式的帳號系統。
 
-- 示範資料：`data/appointments.seed.json`
-- 執行後資料：`data/appointments.json`
-- 信件預覽：`data/outbox/`
+因此 `BOOKING_ENABLED` 未設為 `true` 時，預約與後台一律回 404，
+形象網站的預約按鈕會自動改導向 LINE。
 
-後台按「重設示範資料」只會重設本專案內的預約資料。
+要正式啟用線上預約，需先把儲存改成雲端資料庫（並用唯一鍵約束避免時段撞號），
+再把環境變數打開。
 
-## 與正式站的差異
+## 修改內容
 
-這份教材保留正式站的主要流程與操作概念，但刻意拿掉登入、雲端資料庫、Google 日曆、LINE、真實寄信與廣告追蹤，避免學員因外部帳號或金鑰卡住。要正式上線前，應將本機 JSON 換成具唯一鍵約束的資料庫，並補上身分驗證、通知佇列與個資保護。
+| 檔案 | 內容 |
+| --- | --- |
+| `src/lib/profile.ts` | 姓名、電話、Email、LINE、社群連結 |
+| `src/lib/site-content.ts` | 首頁的服務區域、戰績、服務項目文案 |
+| `src/lib/booking.ts` | 營業時間、開放天數、諮詢需求選項 |
+| `src/app/globals.css` | 品牌色（`--brand-green` / `--brand-purple`） |
+| `public/guo-yankun-hero.png` | 首頁形象照（去背） |
+| `public/card/guo-yankun.jpg` | 名片圓形頭像 |
+
+社群連結留空白就不會顯示在名片上，不會出現點了沒反應的死連結。
+
+## 部署
+
+推上 GitHub 後於 Vercel 匯入即可，不需額外設定。
+
+**不要設定 `BOOKING_ENABLED`**，除非儲存已改為資料庫——
+未設定就是安全的關閉狀態。

@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+
+data/appointments.json
+data/outbox/
+
+.DS_Store
+Thumbs.db
+npm-debug.log*
+
+# 課程教材附的講師照片，非本站使用
+public/card/abin.jpg

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { PROFILE } from "@/lib/profile";
+import { SITE_URL } from "@/lib/site-config";
 import "./globals.css";
-
-// 目前的正式網址。之後若買了自己的網域，改這一行即可。
-const SITE_URL = "https://guoyankun.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

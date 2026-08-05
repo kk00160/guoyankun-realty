@@ -11,7 +11,8 @@ export const PROFILE = {
   address: "台南市各區 · 專營東橋重劃區",
   photoUrl: "/card/guo-yankun.jpg",
   social: {
-    line: "https://line.me/ti/p/kk00160",
+    // 用 LINE ID 加好友必須在 ID 前加波浪號，少了會出現「無法加入好友」。
+    line: "https://line.me/ti/p/~kk00160",
     // 之後有經營再填網址；留空白就不會顯示在名片上。
     facebook: "",
     instagram: "",

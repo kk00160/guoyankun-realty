@@ -9,15 +9,21 @@ const TIME_SLOTS = ["不限", "上午 (09-12)", "下午 (12-18)", "晚上 (18-21
 /**
  * 客戶預約表單。
  *
- * 刻意不送到伺服器：目前沒有資料庫，寫入雲端會遺失。
- * 改為在瀏覽器把內容組成訊息後開啟 LINE，客戶按送出即可傳給我，
- * 資料不經過第三方，也不會有「顯示成功但實際沒收到」的情況。
+ * 不送到伺服器：目前沒有資料庫，寫入雲端會遺失。
+ *
+ * 流程刻意設計成「先複製、再加好友」：
+ * 新客戶通常還沒加過好友，若直接開啟 LINE 傳訊畫面，
+ * 聯絡人名單裡找不到收件者，訊息根本送不出去。
+ * 因此改為把填寫內容複製到剪貼簿後開啟加好友頁面，
+ * 客戶加完好友貼上即可送出。
  */
 export default function ContactForm() {
   const [service, setService] = useState<string>(SERVICES[0]);
   const [timeSlot, setTimeSlot] = useState<string>(TIME_SLOTS[0]);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name") ?? "").trim();
@@ -25,20 +31,28 @@ export default function ContactForm() {
     const message = String(data.get("message") ?? "").trim();
 
     const lines = [
-      `您好，我想預約諮詢：`,
+      "您好，我想預約諮詢：",
       `姓名：${name}`,
       `電話：${phone}`,
       `諮詢服務：${service}`,
       `方便聯絡時段：${timeSlot}`
     ];
     if (message) lines.push(`需求說明：${message}`);
+    const text = lines.join("\n");
 
-    // 開啟 LINE 並帶入已填好的內容，客戶按傳送即可。
-    window.open(
-      `https://line.me/R/msg/text/?${encodeURIComponent(lines.join("\n"))}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    setSummary(text);
+
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      // 瀏覽器擋下剪貼簿時，下方仍會顯示內容讓客戶自行複製。
+      ok = false;
+    }
+    setCopied(ok);
+
+    window.open(PROFILE.social.line, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -108,8 +122,22 @@ export default function ContactForm() {
 
       <button type="submit" className="lead-submit">送出預約</button>
 
+      {summary && (
+        <div className="lead-result" role="status">
+          <p className="lead-result-title">
+            {copied ? "✅ 已複製您的資料，LINE 已開啟" : "請複製以下內容，LINE 已開啟"}
+          </p>
+          <p className="lead-result-step">
+            加我好友後，把內容<strong>貼上</strong>傳送即可，我會盡快回覆您。
+          </p>
+          <pre className="lead-result-text">{summary}</pre>
+          <a className="lead-result-link" href={PROFILE.social.line} target="_blank" rel="noreferrer">
+            沒有自動開啟？點這裡加 LINE 好友
+          </a>
+        </div>
+      )}
+
       <p className="lead-note">
-        送出後會開啟 LINE 並帶入您填寫的內容，按傳送即可；
         急件請直接<a href={`tel:${PROFILE.phoneRaw}`}>來電 {PROFILE.phone}</a>，回覆最快。
       </p>
     </form>

@@ -17,3 +17,4 @@ npm-debug.log*
 
 # 課程教材附的講師照片，非本站使用
 public/card/abin.jpg
+.vercel

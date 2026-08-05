@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { PROFILE } from "@/lib/profile";
 import "./globals.css";
 
-// 正式上線時改成你的網域，OG 分享圖與 canonical 才會正確。
-const SITE_URL = "https://www.guoyankun-realty.tw";
+// 目前的正式網址。之後若買了自己的網域，改這一行即可。
+const SITE_URL = "https://guoyankun.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

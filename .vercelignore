@@ -1,0 +1,14 @@
+# 本機環境變數絕對不能上傳。
+# .env.local 內含 BOOKING_ENABLED=true，若被帶上正式站，
+# 等於打開預約系統與 /admin 後台，造成客戶個資外洩。
+.env
+.env.local
+.env.*.local
+
+# 實際預約資料與寄信預覽（可能含客戶個資）
+data/appointments.json
+data/outbox/
+
+node_modules/
+.next/
+.git/

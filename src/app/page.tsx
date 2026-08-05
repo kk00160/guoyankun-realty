@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ContactForm from "@/app/_components/ContactForm";
 import { BOOKING_ENABLED, BOOKING_HREF, BOOKING_LINK_PROPS } from "@/lib/feature-flags";
 import { PROFILE } from "@/lib/profile";
 import { ACHIEVEMENTS, SERVICE_AREAS, SERVICES } from "@/lib/site-content";
@@ -134,29 +135,17 @@ export default function HomePage() {
             <p className="section-eyebrow">CONTACT</p>
             <h2>預約諮詢</h2>
             <p className="section-lead">
-              {BOOKING_ENABLED
-                ? "線上選一個方便的時段，留下您想處理的問題，我會依需求先做準備。24 小時內專人回覆，免費諮詢。"
-                : "加 LINE 留下您想處理的問題，我會依需求先做準備。24 小時內專人回覆，免費諮詢。"}
+              留下聯絡方式與您想處理的問題，我會依需求先做準備，24 小時內回覆，免費諮詢。
             </p>
-            <div className="booking-actions">
-              {BOOKING_ENABLED ? (
-                <>
-                  <Link className="cta cta-primary" href="/card/booking">選時段線上預約</Link>
-                  <a className="cta cta-line" href={PROFILE.social.line} target="_blank" rel="noreferrer">
-                    加 LINE 直接問
-                  </a>
-                </>
-              ) : (
-                <>
-                  <a className="cta cta-line" href={PROFILE.social.line} target="_blank" rel="noreferrer">
-                    加 LINE 免費諮詢
-                  </a>
-                  <a className="cta cta-outline" href={`tel:${PROFILE.phoneRaw}`}>
-                    直接撥打電話
-                  </a>
-                </>
-              )}
-            </div>
+
+            <ContactForm />
+
+            {BOOKING_ENABLED && (
+              <div className="booking-actions">
+                <Link className="cta cta-outline" href="/card/booking">或選時段線上預約</Link>
+              </div>
+            )}
+
             <ul className="booking-facts">
               <li>
                 <span aria-hidden="true">📞</span>

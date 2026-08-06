@@ -2,14 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { buyerTourUrl } from "@/lib/buyer-link";
 import { TOUR_STATUS_LABEL, type TourStatus, formatTourDate, isTourOpen } from "@/lib/tour";
 import type { TourWithCount } from "@/lib/tour-store";
 
-/** 買方連結用當下的網域組出來，本機開發與正式站都會是對的。 */
-function buyerLink(token: string) {
-  if (typeof window === "undefined") return `/tour/${token}`;
-  return `${window.location.origin}/tour/${token}`;
-}
 
 export default function TourBoard({ initialTours }: { initialTours: TourWithCount[] }) {
   const [tours, setTours] = useState(initialTours);
@@ -67,7 +63,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
 
   async function copyLink(token: string) {
     try {
-      await navigator.clipboard.writeText(buyerLink(token));
+      await navigator.clipboard.writeText(buyerTourUrl(token));
       setCopied(token);
       window.setTimeout(() => setCopied(""), 2000);
     } catch {
@@ -140,7 +136,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
               </div>
 
               <div className="tour-link-row">
-                <code>{buyerLink(tour.token)}</code>
+                <code>{buyerTourUrl(tour.token)}</code>
                 <button type="button" onClick={() => copyLink(tour.token)}>
                   {copied === tour.token ? "已複製" : "複製連結"}
                 </button>

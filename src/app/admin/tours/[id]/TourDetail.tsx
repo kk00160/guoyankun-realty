@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { buyerTourUrl } from "@/lib/buyer-link";
 import { formatPing, formatPrice, formatSeenAt, formatUnitPrice } from "@/lib/listings";
 import { BUYER_CHOICE_LABEL, type Tour, formatTourDate, isTourOpen } from "@/lib/tour";
 import type { TourEntry } from "@/lib/tour-store";
@@ -12,10 +13,6 @@ type RouteResult = {
   missingCoords: string[];
 };
 
-function buyerLink(token: string) {
-  if (typeof window === "undefined") return `/tour/${token}`;
-  return `${window.location.origin}/tour/${token}`;
-}
 
 export default function TourDetail({ tour, entries }: { tour: Tour; entries: TourEntry[] }) {
   const [rows, setRows] = useState(entries);
@@ -116,7 +113,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(buyerLink(token));
+      await navigator.clipboard.writeText(buyerTourUrl(token));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -146,7 +143,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
       )}
 
       <div className="tour-link-row">
-        <code>{buyerLink(token)}</code>
+        <code>{buyerTourUrl(token)}</code>
         <button type="button" onClick={copyLink}>
           {copied ? "已複製" : "複製連結"}
         </button>

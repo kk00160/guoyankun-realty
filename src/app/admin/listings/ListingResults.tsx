@@ -11,6 +11,7 @@ import {
   formatSeenAt,
   formatUnitPrice
 } from "@/lib/listings";
+import { buyerTourUrl, isLocalPreview, localTourUrl } from "@/lib/buyer-link";
 import { type ListingQuery, buildListingHref, describeQuery } from "@/lib/listing-filters";
 import type { ListingPage } from "@/lib/tour-store";
 import ListingDetail from "./ListingDetail";
@@ -36,7 +37,12 @@ export default function ListingResults({
   const [message, setMessage] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   // 產好的買方連結留在畫面上，不用再跳到帶看單頁去複製。
-  const [madeLink, setMadeLink] = useState<{ url: string; title: string; count: number } | null>(null);
+  const [madeLink, setMadeLink] = useState<{
+    url: string;
+    preview: string;
+    title: string;
+    count: number;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   function toggle(id: string) {
@@ -120,7 +126,9 @@ export default function ListingResults({
       if (!response.ok) throw new Error(payload.error || "產生連結失敗");
 
       setMadeLink({
-        url: `${window.location.origin}/tour/${payload.token}`,
+        // 一律用正式站網址：localhost 的連結傳給買方永遠打不開。
+        url: buyerTourUrl(payload.token),
+        preview: localTourUrl(payload.token),
         title: payload.tour.title,
         count: payload.added
       });
@@ -291,15 +299,22 @@ export default function ListingResults({
             <button type="button" className="button" onClick={copyLink}>
               {copied ? "已複製" : "複製連結"}
             </button>
-            <a className="button-secondary" href={madeLink.url} target="_blank" rel="noreferrer">
-              預覽買方看到的樣子
+            <a className="button-secondary" href={madeLink.preview} target="_blank" rel="noreferrer">
+              自己先看一次
             </a>
             <button type="button" className="button-secondary" onClick={() => setMadeLink(null)}>
               關閉
             </button>
           </div>
           <p className="made-link-note">
-            把連結傳給買方就好。他勾完「想看」，你在帶看單那邊會即時看到，接著就能排路線。
+            {isLocalPreview() ? (
+              <>
+                ⚠️ 這是<b>正式站</b>的網址，要等正式站設好環境變數才會通（現在點會 404）。
+                「自己先看一次」開的是本機版本，只有你這台電腦看得到。
+              </>
+            ) : (
+              <>把連結傳給買方就好。他勾完「想看」，你在帶看單那邊會即時看到，接著就能排路線。</>
+            )}
           </p>
         </div>
       )}

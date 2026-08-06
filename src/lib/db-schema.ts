@@ -49,6 +49,7 @@ type TourRow = {
   origin_lat: number | null;
   origin_lng: number | null;
   note: string | null;
+  submitted_at: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -34,6 +34,8 @@ export type Tour = {
   originLat: number | null;
   originLng: number | null;
   note: string | null;
+  /** 買方按下「送出」的時間。null = 還在看。 */
+  submittedAt: string | null;
   createdAt: string;
 };
 
@@ -122,6 +124,7 @@ export function toTour(row: Record<string, unknown>): Tour {
     originLat: num(row.origin_lat),
     originLng: num(row.origin_lng),
     note: str(row.note),
+    submittedAt: str(row.submitted_at),
     createdAt: String(row.created_at ?? "")
   };
 }

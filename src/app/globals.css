@@ -3151,3 +3151,193 @@ a {
   font-size: 13px;
   line-height: 1.7;
 }
+
+/* =====================================================
+   買方頁：照片相簿、詳細資料、送出列
+   ===================================================== */
+
+/* 橫向滑動的相簿。用 CSS scroll-snap，不自己寫拖曳 ——
+   手機原生的慣性滑動比較順，也不會跟頁面上下捲動打架。 */
+.buyer-gallery {
+  position: relative;
+}
+
+.buyer-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.buyer-track::-webkit-scrollbar {
+  display: none;
+}
+
+.buyer-track .buyer-photo {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+
+.buyer-counter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(29, 21, 38, 0.78);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.buyer-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.buyer-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.buyer-dots span[data-on="true"] {
+  background: #fff;
+  width: 18px;
+}
+
+.buyer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.buyer-tags span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.buyer-more {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--teal-600);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.buyer-specs {
+  margin: 0 0 12px;
+  border-top: 1px solid var(--line);
+}
+
+.buyer-specs > div {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.buyer-specs dt {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.buyer-specs dd {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 送出列固定在螢幕底部，捲到哪都按得到 */
+.buyer-submit-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 20px -16px 0;
+  padding: 14px 18px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgba(45, 16, 74, 0.12);
+}
+
+.buyer-submit-bar b {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.buyer-submit-bar span {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.buyer-submit-bar .button {
+  min-height: 48px;
+  padding: 12px 26px;
+  font-size: 16px;
+}
+
+.buyer-done {
+  border: 1px solid var(--gold-500);
+  background: #f2fbf5;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+
+.buyer-done b {
+  display: block;
+  color: var(--teal-600);
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+.buyer-done p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+
+/* 買方頁的底部有固定送出列，內容要留出空間免得被蓋住 */
+.buyer-shell {
+  padding-bottom: 8px;
+}
+
+/* 買方已送出的提示 */
+.submitted-bar {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #1f6b3a;
+  background: #0f2a1a;
+  border-radius: 8px;
+  color: var(--gold-on-dark);
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.tag-done {
+  border-color: var(--gold-500);
+  background: var(--gold-500);
+  color: #fff;
+}

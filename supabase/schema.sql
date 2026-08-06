@@ -91,9 +91,18 @@ create table if not exists public.tours (
   origin_lng    double precision,
 
   note          text,
+
+  -- 買方按下「送出」的時間。null = 還在看。
+  -- 勾選本身是即時存的（關掉分頁也不會丟），這個欄位只用來區分
+  -- 「還在挑」跟「挑完了，可以安排帶看」。
+  submitted_at  timestamptz,
+
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+
+-- 舊資料庫補欄位用。整份 schema.sql 可以重複執行。
+alter table public.tours add column if not exists submitted_at timestamptz;
 
 create index if not exists tours_status_idx on public.tours (status);
 

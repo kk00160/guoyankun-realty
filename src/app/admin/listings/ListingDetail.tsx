@@ -8,7 +8,8 @@ import {
   formatPrice,
   formatSeenAt,
   formatUnitPrice,
-  publicRatio
+  publicRatio,
+  resizeImage
 } from "@/lib/listings";
 import { googleMapsPlaceUrl } from "@/lib/route";
 
@@ -99,7 +100,7 @@ export default function ListingDetail({
             {photos.length > 0 ? (
               <>
                 {/* 原生 img：不把來源網站的圖片轉存到自己的網域。 */}
-                <img className="detail-photo" src={photos[index]} alt="" />
+                <img className="detail-photo" src={resizeImage(photos[index], "full")} alt="" />
                 {photos.length > 1 && (
                   <>
                     <button
@@ -142,7 +143,7 @@ export default function ListingDetail({
                     onClick={() => setIndex(i)}
                     aria-label={`第 ${i + 1} 張`}
                   >
-                    <img src={src} alt="" loading="lazy" />
+                    <img src={resizeImage(src, "thumb")} alt="" loading="lazy" />
                   </button>
                 ))}
               </div>

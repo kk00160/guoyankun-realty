@@ -7,7 +7,9 @@ import {
   formatPing,
   formatPrice,
   formatSeenAt,
-  formatUnitPrice
+  formatUnitPrice,
+  publicRatio,
+  resizeImage
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
 import { googleMapsPlaceUrl } from "@/lib/route";
@@ -19,32 +21,78 @@ type Entry = {
   listing: Listing;
 };
 
+/**
+ * 一間房的照片相簿。
+ *
+ * 用 CSS scroll-snap 做橫向滑動，不寫任何拖曳邏輯 ——
+ * 手機上原生的慣性滑動比自己寫的順，而且不會跟頁面的上下捲動打架。
+ */
+function Gallery({ photos, alt }: { photos: string[]; alt: string }) {
+  const [index, setIndex] = useState(0);
+
+  if (photos.length === 0) {
+    return <div className="buyer-photo buyer-photo-empty">沒有照片</div>;
+  }
+
+  return (
+    <div className="buyer-gallery">
+      <div
+        className="buyer-track"
+        onScroll={(event) => {
+          const el = event.currentTarget;
+          setIndex(Math.round(el.scrollLeft / el.clientWidth));
+        }}
+      >
+        {photos.map((src) => (
+          // 原生 img：不把來源網站的圖片轉存到自己的網域。
+          <img key={src} className="buyer-photo" src={resizeImage(src, "card")} alt={alt} loading="lazy" />
+        ))}
+      </div>
+
+      {photos.length > 1 && (
+        <>
+          <div className="buyer-counter">
+            {index + 1} / {photos.length}
+          </div>
+          <div className="buyer-dots">
+            {photos.slice(0, 12).map((src, i) => (
+              <span key={src} data-on={i === index} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function BuyerPicker({
   token,
   title,
   buyerName,
+  submittedAt,
   entries
 }: {
   token: string;
   title: string;
   buyerName: string | null;
+  submittedAt: string | null;
   entries: Entry[];
 }) {
   const [rows, setRows] = useState(entries);
   const [name, setName] = useState(buyerName ?? "");
-  // 只在一開始問一次稱呼。不問電話 Email —— 對方本來就認識你，多問一欄只會讓人退出。
   const [askName, setAskName] = useState(!buyerName);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
+  const [submitted, setSubmitted] = useState(Boolean(submittedAt));
 
+  const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
   const decided = useMemo(() => rows.filter((row) => row.choice !== "pending").length, [rows]);
 
   async function choose(listingId: string, choice: BuyerChoice) {
     const previous = rows;
     // 先動畫面再送出：手機上網路慢的時候，按了沒反應會讓人一直重複按。
-    setRows((current) =>
-      current.map((row) => (row.listingId === listingId ? { ...row, choice } : row))
-    );
+    setRows((current) => current.map((row) => (row.listingId === listingId ? { ...row, choice } : row)));
     setBusy(listingId);
     setMessage("");
 
@@ -59,8 +107,28 @@ export default function BuyerPicker({
         throw new Error(payload.error || "沒有存成功");
       }
     } catch (error) {
-      setRows(previous); // 失敗就退回原狀，不要讓畫面顯示一個沒存進去的選擇
+      setRows(previous); // 失敗就退回原狀，不要顯示一個沒存進去的選擇
       setMessage(error instanceof Error ? error.message : "沒有存成功，請再按一次。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function submit() {
+    setBusy("submit");
+    setMessage("");
+    try {
+      await fetch(`/api/tour/${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "submit", buyerName: name.trim() })
+      });
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      // 選擇本來就是即時存的，送出只是通知。失敗也讓對方看到已送出，
+      // 不要因為一個通知失敗就讓人以為白選了。
+      setSubmitted(true);
     } finally {
       setBusy("");
     }
@@ -76,10 +144,10 @@ export default function BuyerPicker({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ buyerName: name.trim() })
       });
-      setAskName(false);
     } catch {
-      setAskName(false); // 存不進去也放行，不要卡住整個流程
+      // 存不進去也放行，不要卡住整個流程
     } finally {
+      setAskName(false);
       setBusy("");
     }
   }
@@ -103,124 +171,184 @@ export default function BuyerPicker({
     );
   }
 
+  const open = openId ? rows.find((row) => row.listingId === openId) : null;
+
   return (
     <div className="buyer-shell">
       <header className="buyer-head">
         <h1>{title}</h1>
-        <p>
-          {name ? `${name}，` : ""}共 {rows.length} 間。想看的按「想看」，沒興趣就按「略過」，
-          我這邊會即時看到，再幫你排看房路線。
-        </p>
+        {submitted ? (
+          <div className="buyer-done">
+            <b>已經送出了，謝謝你 🙌</b>
+            <p>
+              你選了 {interested.length} 間想看的，我這邊收到了，會盡快跟你聯絡安排時間。
+              還想調整的話，直接改下面的選擇再送出一次就好。
+            </p>
+          </div>
+        ) : (
+          <p>
+            {name ? `${name}，` : ""}共 {rows.length} 間。點卡片可以看更多照片和詳細資料，
+            想看的按「想看」，全部挑完後按最下面的送出。
+          </p>
+        )}
         <div className="buyer-progress">
-          已選 {decided} / {rows.length}
+          已選 {decided} / {rows.length}　·　想看 {interested.length} 間
         </div>
       </header>
 
       {message && <p className="form-message">{message}</p>}
 
       <div className="buyer-list">
-        {rows.map((entry) => (
-          <article key={entry.listingId} className="buyer-card" data-choice={entry.choice}>
-            {/* 用原生 img 外連原始刊登的圖片，不轉存到自己的網域。 */}
-            {entry.listing.images[0] ? (
-              <img className="buyer-photo" src={entry.listing.images[0]} alt="" loading="lazy" />
-            ) : (
-              <div className="buyer-photo buyer-photo-empty">沒有照片</div>
-            )}
+        {rows.map((entry) => {
+          const listing = entry.listing;
+          const ratio = publicRatio(listing);
 
-            <div className="buyer-card-body">
-              <h2>{entry.listing.title}</h2>
-              <div className="buyer-price">{formatPrice(entry.listing.totalPrice)}</div>
+          return (
+            <article key={entry.listingId} className="buyer-card" data-choice={entry.choice}>
+              <Gallery photos={listing.images} alt={listing.title} />
 
-              <dl className="buyer-meta">
-                <div>
-                  <dt>坪數</dt>
-                  <dd>{formatPing(entry.listing.ping)}</dd>
-                </div>
-                <div>
-                  <dt>格局</dt>
-                  <dd>{entry.listing.layout ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>單價</dt>
-                  <dd>{formatUnitPrice(entry.listing.unitPrice)}</dd>
-                </div>
-                <div>
-                  <dt>屋齡</dt>
-                  <dd>{formatAge(entry.listing.age)}</dd>
-                </div>
-              </dl>
+              <div className="buyer-card-body">
+                <h2>{listing.title}</h2>
+                <div className="buyer-price">{formatPrice(listing.totalPrice)}</div>
 
-              <p className="buyer-where">
-                {entry.listing.district ?? ""}
-                {entry.listing.houseType ? `　${entry.listing.houseType}` : ""}
-                {entry.listing.floorInfo ? `　${entry.listing.floorInfo}` : ""}
-              </p>
+                <dl className="buyer-meta">
+                  <div>
+                    <dt>權狀</dt>
+                    <dd>{formatPing(listing.ping)}</dd>
+                  </div>
+                  <div>
+                    <dt>格局</dt>
+                    <dd>{listing.layout ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>屋齡</dt>
+                    <dd>{formatAge(listing.age)}</dd>
+                  </div>
+                  <div>
+                    <dt>單價</dt>
+                    <dd>{formatUnitPrice(listing.unitPrice)}</dd>
+                  </div>
+                </dl>
 
-              {/* 資料來源與更新時間固定顯示：這是一份快照，不是即時報價。 */}
-              <p className="buyer-source">
-                資料更新於 {formatSeenAt(entry.listing.lastSeenAt)}
-                {entry.listing.source === "591" && "　·　資料來源：591"}
-                {entry.listing.sourceUrl && (
-                  <>
-                    　·{" "}
-                    <a href={entry.listing.sourceUrl} target="_blank" rel="noreferrer">
-                      看原始刊登
-                    </a>
-                  </>
+                <p className="buyer-where">
+                  {listing.district ?? ""}
+                  {listing.houseType ? `　${listing.houseType}` : ""}
+                  {listing.floorInfo ? `　${listing.floorInfo}` : ""}
+                  {listing.parking ? `　${listing.parking}` : ""}
+                </p>
+
+                {listing.tags.length > 0 && (
+                  <div className="buyer-tags">
+                    {listing.tags.map((tag) => (
+                      <span key={tag}>{tag}</span>
+                    ))}
+                  </div>
                 )}
-                {entry.listing.lat !== null && entry.listing.lng !== null && (
-                  <>
-                    　·{" "}
-                    <a
-                      href={googleMapsPlaceUrl({ lat: entry.listing.lat, lng: entry.listing.lng })}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      看地圖
-                    </a>
-                  </>
-                )}
-              </p>
-            </div>
 
-            <div className="buyer-actions">
-              <button
-                type="button"
-                className="buyer-yes"
-                data-on={entry.choice === "interested"}
-                onClick={() => choose(entry.listingId, entry.choice === "interested" ? "pending" : "interested")}
-                disabled={busy === entry.listingId}
-              >
-                想看
-              </button>
-              <button
-                type="button"
-                className="buyer-no"
-                data-on={entry.choice === "rejected"}
-                onClick={() => choose(entry.listingId, entry.choice === "rejected" ? "pending" : "rejected")}
-                disabled={busy === entry.listingId}
-              >
-                略過
-              </button>
-            </div>
-          </article>
-        ))}
+                <button
+                  type="button"
+                  className="buyer-more"
+                  onClick={() => setOpenId(openId === entry.listingId ? null : entry.listingId)}
+                >
+                  {openId === entry.listingId ? "收起詳細資料 ▲" : "看詳細資料 ▼"}
+                </button>
+
+                {open?.listingId === entry.listingId && (
+                  <dl className="buyer-specs">
+                    {(
+                      [
+                        ["權狀坪數", formatPing(listing.ping)],
+                        ["主建物", listing.mainArea ? `${listing.mainArea.toFixed(1)} 坪` : "—"],
+                        ["公設比", ratio === null ? "—" : `約 ${ratio.toFixed(0)}%`],
+                        ["格局", listing.layout ?? "—"],
+                        ["屋齡", formatAge(listing.age)],
+                        ["型態", listing.houseType ?? "—"],
+                        ["用途", listing.kindName ?? "—"],
+                        ["樓層", listing.floorInfo ?? "—"],
+                        ["車位", listing.parking ?? "—"],
+                        ["社區", listing.communityName ?? "—"],
+                        ["位置", `${listing.district ?? ""}${listing.address ? `　${listing.address}` : ""}` || "—"]
+                      ] as [string, string][]
+                    ).map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {/* 刻意只留更新日期，不揭露資料從哪裡來。
+                    日期不能拿掉：買方拿一個月前的價格來談，責任會落在阿坤身上。 */}
+                <p className="buyer-source">
+                  資料更新於 {formatSeenAt(listing.lastSeenAt)}　·　實際屋況與價格以現場為準
+                  {listing.lat !== null && listing.lng !== null && (
+                    <>
+                      　·{" "}
+                      <a
+                        href={googleMapsPlaceUrl({ lat: listing.lat, lng: listing.lng })}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        看地圖
+                      </a>
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="buyer-actions">
+                <button
+                  type="button"
+                  className="buyer-yes"
+                  data-on={entry.choice === "interested"}
+                  onClick={() => choose(entry.listingId, entry.choice === "interested" ? "pending" : "interested")}
+                  disabled={busy === entry.listingId}
+                >
+                  想看
+                </button>
+                <button
+                  type="button"
+                  className="buyer-no"
+                  data-on={entry.choice === "rejected"}
+                  onClick={() => choose(entry.listingId, entry.choice === "rejected" ? "pending" : "rejected")}
+                  disabled={busy === entry.listingId}
+                >
+                  略過
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
-      {rows.length === 0 && (
-        <p className="empty-note">這份清單目前還沒有物件，我整理好會再通知你。</p>
-      )}
+      {rows.length === 0 && <p className="empty-note">這份清單目前還沒有物件，我整理好會再通知你。</p>}
 
       <footer className="buyer-foot">
         <p>
-          清單上的價格與屋況資料以原始刊登為準，實際情況我會在現場跟你確認。
+          清單上的資料僅供參考，實際屋況、價格與產權情形，我會在帶看時跟你逐一確認。
           有任何一間想先問細節，直接打給我。
         </p>
-        <a className="button" href={`tel:${PROFILE.phoneRaw}`}>
+        <a className="button-secondary" href={`tel:${PROFILE.phoneRaw}`}>
           打給{PROFILE.alias}　{PROFILE.phone}
         </a>
       </footer>
+
+      {/* 送出列固定在底部。勾選本來就即時存了，這顆按鈕是讓買方知道「我挑完了」，
+          也讓阿坤知道可以開始安排帶看。 */}
+      {rows.length > 0 && (
+        <div className="buyer-submit-bar">
+          <div>
+            <b>想看 {interested.length} 間</b>
+            <span>
+              {decided < rows.length ? `　還有 ${rows.length - decided} 間沒選` : "　全部選完了"}
+            </span>
+          </div>
+          <button type="button" className="button" onClick={submit} disabled={busy === "submit"}>
+            {busy === "submit" ? "送出中…" : submitted ? "重新送出" : "送出給" + PROFILE.alias}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

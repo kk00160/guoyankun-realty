@@ -130,6 +130,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
                   </p>
                 </div>
                 <div className="tag-row">
+                  {tour.submittedAt && <span className="tag tag-done">買方已送出</span>}
                   <span className="tag">{TOUR_STATUS_LABEL[tour.status]}</span>
                   <span className="tag">{open ? `${formatTourDate(tour.expiresAt)} 到期` : "已關閉"}</span>
                 </div>

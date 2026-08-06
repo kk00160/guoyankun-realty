@@ -136,6 +136,12 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
         </Link>
       </div>
 
+      {tour.submittedAt && (
+        <p className="submitted-bar">
+          ✅ 買方已於 {formatTourDate(tour.submittedAt)} 送出，勾了 {interested} 間想看。可以排路線安排帶看了。
+        </p>
+      )}
+
       {!isTourOpen(tour) && (
         <p className="alert-bar" role="alert">
           這張帶看單目前是關閉的（{formatTourDate(tour.expiresAt)} 到期），買方點連結會看到說明頁。

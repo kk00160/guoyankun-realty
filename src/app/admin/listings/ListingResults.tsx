@@ -9,7 +9,8 @@ import {
   formatPing,
   formatPrice,
   formatSeenAt,
-  formatUnitPrice
+  formatUnitPrice,
+  resizeImage
 } from "@/lib/listings";
 import { buyerTourUrl, isLocalPreview, localTourUrl } from "@/lib/buyer-link";
 import { type ListingQuery, buildListingHref, describeQuery } from "@/lib/listing-filters";
@@ -199,7 +200,7 @@ export default function ListingResults({
             <button type="button" className="listing-open" onClick={() => setOpenId(listing.id)}>
               {/* 原生 img：next/image 會把來源網站的圖片抓下來重新代管，這裡只做外連。 */}
               {listing.images[0] && (
-                <img className="listing-photo" src={listing.images[0]} alt="" loading="lazy" />
+                <img className="listing-photo" src={resizeImage(listing.images[0], "thumb")} alt="" loading="lazy" />
               )}
               {listing.images.length > 1 && (
                 <span className="listing-photo-count">{listing.images.length} 張</span>

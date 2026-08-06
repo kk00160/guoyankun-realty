@@ -284,6 +284,21 @@ export function formatSeenAt(iso: string) {
 }
 
 /**
+ * 換一個比較小的圖片尺寸。
+ *
+ * 圖床的網址結尾是尺寸參數，原始的 `!x.water2.jpg` 一張 758KB；
+ * 買方在手機上開一份 6 間、每間 20 張的清單，那是 90MB。
+ * 換成 600x400 只要 121KB（少 84%），在手機上看綽綽有餘。
+ *
+ * 認不出格式就原樣回傳，不要自己拼一個猜的網址出來變成破圖。
+ */
+export function resizeImage(url: string, variant: "thumb" | "card" | "full" = "card") {
+  const suffix = { thumb: "!208x156.jpg", card: "!600x400.jpg", full: "!750x560.jpg" }[variant];
+  const base = url.match(/^(https?:\/\/[^?#]*?\.(?:jpg|jpeg|png|webp))(?:![^/]*)?$/i);
+  return base ? `${base[1]}${suffix}` : url;
+}
+
+/**
  * 疑似重複刊登的分組鍵：同區 + 同總價 + 同坪數。
  *
  * 第一版刻意不做自動合併 —— 演算法很容易把兩間不同的房子判成同一間，

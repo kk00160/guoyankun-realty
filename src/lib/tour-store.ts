@@ -459,6 +459,25 @@ export async function removeTourItem(tourId: string, listingId: string) {
   if (error) throw new Error(`移除物件失敗：${error.message}`);
 }
 
+/**
+ * 買方按下「送出」。
+ *
+ * 勾選本身是即時存的（見 setBuyerChoice），所以這裡不是在存資料，
+ * 是在區分「還在挑」跟「挑完了，可以安排帶看」。
+ *
+ * 刻意不讓它失敗就中斷整個流程：買方的選擇早就存好了，
+ * 就算這一筆時間戳沒寫進去，也要讓買方看到「已送出」。
+ */
+export async function markTourSubmitted(tourId: string) {
+  const { error } = await db()
+    .from("tours")
+    .update({ submitted_at: new Date().toISOString() })
+    .eq("id", tourId);
+
+  // 欄位還沒建（舊資料庫沒跑過新的 schema.sql）也不要擋住買方。
+  if (error) console.error("[tour] 標記送出失敗：", error.message);
+}
+
 /** 買方在手機上按「想看／略過」。這是唯一一個不需要密碼就能寫入的動作。 */
 export async function setBuyerChoice(tourId: string, listingId: string, choice: BuyerChoice) {
   const { error } = await db()

@@ -1,6 +1,6 @@
 import { bad, fail, ok, optionalText, readJson } from "@/lib/api";
 import { BUYER_CHOICES, type BuyerChoice, isTourOpen, tourClosedReason } from "@/lib/tour";
-import { getTourByToken, patchTour, setBuyerChoice } from "@/lib/tour-store";
+import { getTourByToken, markTourSubmitted, patchTour, setBuyerChoice } from "@/lib/tour-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ async function openTourOr(token: string) {
   return { tour, response: null };
 }
 
-/** 買方按「想看」或「略過」。 */
+/** 買方按「想看」或「略過」，或按下「送出」。 */
 export async function POST(request: Request, context: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await context.params;
@@ -32,6 +32,17 @@ export async function POST(request: Request, context: { params: Promise<{ token:
     if (!tour) return response;
 
     const body = await readJson(request);
+
+    // 送出：勾選早就存好了，這裡只是標記「挑完了」。
+    if (body.action === "submit") {
+      await markTourSubmitted(tour.id);
+      if (typeof body.buyerName === "string") {
+        const name = optionalText(body.buyerName, 50);
+        if (name) await patchTour(tour.id, { buyerName: name });
+      }
+      return ok({ submitted: true });
+    }
+
     const listingId = optionalText(body.listingId, 64);
     const choice = String(body.choice ?? "") as BuyerChoice;
 

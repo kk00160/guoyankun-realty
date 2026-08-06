@@ -53,9 +53,14 @@ create table if not exists public.listings (
 );
 
 -- 同一個來源的同一個物件只留一筆，匯入時靠這個做 upsert。
+--
+-- ⚠️ 不要加 `where source_id is not null` 改成部分索引。
+--    看起來更精準，但 Postgres 的 ON CONFLICT 用不了部分索引，
+--    匯入會噴 "no unique or exclusion constraint matching the ON CONFLICT specification"。
+--    不加 where 也不會有問題：Postgres 預設 NULL 彼此相異，
+--    手動建立的多筆 source_id = null 的案源不會互相衝突。
 create unique index if not exists listings_source_key
-  on public.listings (source, source_id)
-  where source_id is not null;
+  on public.listings (source, source_id);
 
 create index if not exists listings_status_idx   on public.listings (status);
 create index if not exists listings_district_idx on public.listings (district);

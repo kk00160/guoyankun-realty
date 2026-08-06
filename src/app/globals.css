@@ -1484,3 +1484,1053 @@ a {
     gap: 4px;
   }
 }
+
+/* =====================================================
+   帶看助手：後台（案源庫 / 帶看單）
+   沿用上面後台的深色系（#0a1326 底、#101e37 卡片、#243955 框線）
+   ===================================================== */
+
+.stat-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.alert-bar {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #7a2c38;
+  background: #2a1119;
+  border-radius: 8px;
+  color: #ffc9d1;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.form-message {
+  margin: 0 0 16px;
+  padding: 11px 15px;
+  border: 1px solid #2b405e;
+  background: #101e37;
+  border-radius: 8px;
+  color: #dbe8f8;
+  line-height: 1.7;
+}
+
+.empty-note,
+.note-line {
+  color: #9fb0c7;
+  line-height: 1.8;
+  margin: 18px 0 0;
+}
+
+.note-line {
+  border-top: 1px solid #243955;
+  padding-top: 16px;
+  font-size: 14px;
+}
+
+/* --- 資料庫尚未設定的說明 --- */
+
+.setup-notice {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 26px;
+  line-height: 1.9;
+}
+
+.setup-notice h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.setup-notice ol {
+  padding-left: 22px;
+  margin: 16px 0;
+}
+
+.setup-notice li {
+  margin-bottom: 12px;
+}
+
+.setup-notice code {
+  background: #0a1326;
+  border: 1px solid #243955;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 13px;
+}
+
+.setup-notice pre {
+  background: #0a1326;
+  border: 1px solid #243955;
+  border-radius: 6px;
+  padding: 14px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 10px 0 0;
+}
+
+.setup-notice a {
+  color: var(--gold-on-dark);
+}
+
+.setup-warn {
+  border-left: 3px solid #bd3d4a;
+  padding-left: 14px;
+  color: #ffc9d1;
+}
+
+.setup-detail {
+  color: #9fb0c7;
+  font-size: 14px;
+}
+
+/* --- 手動新增表單 --- */
+
+.manual-form {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.manual-form-hint {
+  margin: 0 0 14px;
+  color: #9fb0c7;
+  line-height: 1.7;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.manual-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #aebfd4;
+}
+
+.manual-grid .span-2 {
+  grid-column: span 2;
+}
+
+.manual-grid .required {
+  color: var(--gold-on-dark);
+  font-size: 12px;
+}
+
+.manual-grid input,
+.manual-grid select,
+.filter-row input,
+.filter-row select,
+.select-bar select {
+  min-height: 40px;
+  border-radius: 6px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #f5f8fc;
+  padding: 8px 11px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.manual-grid input:focus,
+.manual-grid select:focus,
+.filter-row input:focus,
+.filter-row select:focus {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 1px;
+}
+
+/* --- 案源卡片 --- */
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.listing-card {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.listing-card[data-status="needs_review"] {
+  border-color: #7a2c38;
+}
+
+.listing-card[data-status="archived"] {
+  opacity: 0.6;
+}
+
+.listing-card[data-selected="true"] {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 1px var(--gold-500);
+}
+
+.listing-card h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.listing-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #aebfd4;
+  cursor: pointer;
+}
+
+.listing-pick input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold-500);
+}
+
+.listing-photo {
+  width: 100%;
+  height: 168px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #0a1326;
+}
+
+.listing-price {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--gold-on-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.listing-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.listing-meta dt {
+  color: #7f92ab;
+  font-size: 12px;
+}
+
+.listing-meta dd {
+  margin: 3px 0 0;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tag-row-left {
+  justify-content: flex-start;
+}
+
+.tag-warn {
+  border-color: #7a2c38;
+  color: #ffc9d1;
+}
+
+.review-box {
+  border: 1px solid #7a2c38;
+  background: #2a1119;
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: #ffc9d1;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.review-box ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.listing-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #243955;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.listing-seen {
+  color: #7f92ab;
+  font-size: 12px;
+}
+
+.listing-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.listing-actions a,
+.listing-actions button,
+.tour-link-row button {
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #dbe8f8;
+  border-radius: 6px;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.listing-actions a:hover,
+.listing-actions button:hover,
+.tour-link-row button:hover {
+  border-color: var(--gold-500);
+}
+
+.listing-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- 底部選取列 --- */
+
+.select-bar {
+  position: sticky;
+  bottom: 16px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border: 1px solid var(--gold-500);
+  background: #101e37;
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+  font-weight: 800;
+}
+
+/* --- 帶看單列表 --- */
+
+.tour-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tour-card {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.tour-card[data-open="false"] {
+  opacity: 0.7;
+}
+
+.tour-card h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.tour-card h3 a {
+  color: #f5f8fc;
+  text-decoration: none;
+}
+
+.tour-card h3 a:hover {
+  color: var(--gold-on-dark);
+}
+
+.tour-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.tour-sub {
+  margin: 6px 0 0;
+  color: #9fb0c7;
+  font-size: 14px;
+}
+
+.tour-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tour-link-row code {
+  flex: 1 1 320px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #aebfd4;
+  overflow-wrap: anywhere;
+}
+
+/* --- 路線結果 --- */
+
+.route-box {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.route-box h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.route-box p {
+  margin: 0 0 10px;
+  line-height: 1.8;
+}
+
+.route-box .button {
+  margin-right: 10px;
+}
+
+.route-note {
+  color: #7f92ab;
+  font-size: 13px;
+}
+
+/* --- 帶看單裡的物件 --- */
+
+.tour-item-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tour-item {
+  display: grid;
+  grid-template-columns: 48px 1fr 200px;
+  gap: 16px;
+  align-items: start;
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.tour-item[data-choice="rejected"] {
+  opacity: 0.55;
+}
+
+.tour-item[data-choice="interested"] {
+  border-color: #1f6b3a;
+}
+
+.tour-item-order {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #2b405e;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-on-dark);
+}
+
+.tour-item-body h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.tour-item-meta {
+  margin: 0 0 4px;
+  color: #9fb0c7;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.tour-item-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #7f92ab;
+}
+
+.tour-item-note input {
+  min-height: 38px;
+  border-radius: 6px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #f5f8fc;
+  padding: 8px 11px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.tour-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.choice-badge {
+  border-radius: 999px;
+  border: 1px solid #355071;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #c4d3e5;
+}
+
+.choice-badge[data-choice="interested"] {
+  border-color: var(--gold-500);
+  background: var(--gold-500);
+  color: #fff;
+}
+
+.choice-badge[data-choice="rejected"] {
+  border-color: #7a2c38;
+  color: #ffc9d1;
+}
+
+@media (max-width: 900px) {
+  .stat-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manual-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tour-item {
+    grid-template-columns: 40px 1fr;
+  }
+
+  .tour-item-side {
+    grid-column: 2;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .manual-grid,
+  .listing-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manual-grid .span-2 {
+    grid-column: span 2;
+  }
+
+  .tour-card-top {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   帶看助手：買方頁（手機優先）
+   買方多半是在 LINE 裡點開，所以先照手機做，桌機只是加寬。
+   ===================================================== */
+
+.buyer-page {
+  min-height: 100vh;
+  background: var(--surface-soft);
+  padding: 0 0 40px;
+}
+
+.buyer-shell,
+.buyer-gate,
+.buyer-closed {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.buyer-gate,
+.buyer-closed {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.buyer-gate h1,
+.buyer-closed h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.buyer-gate p,
+.buyer-closed p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+
+.buyer-gate input {
+  min-height: 52px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 17px; /* 小於 16px 時 iOS Safari 會自動放大整頁 */
+  text-align: center;
+}
+
+.buyer-gate input:focus {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 1px;
+}
+
+.buyer-head h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.buyer-head p {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+
+.buyer-progress {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--navy-800);
+  color: #fff;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.buyer-list {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.buyer-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: opacity 0.15s ease;
+}
+
+.buyer-card[data-choice="rejected"] {
+  opacity: 0.5;
+}
+
+.buyer-card[data-choice="interested"] {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 1px var(--gold-500), var(--shadow);
+}
+
+.buyer-photo {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-soft);
+}
+
+.buyer-photo-empty {
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.buyer-card-body {
+  padding: 18px;
+}
+
+.buyer-card-body h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.buyer-price {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--teal-600);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 14px;
+}
+
+.buyer-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.buyer-meta dt {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.buyer-meta dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.buyer-where {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* 資料來源與更新時間：一定要看得到，但不搶戲。 */
+.buyer-source {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.buyer-source a {
+  color: var(--teal-600);
+}
+
+.buyer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--line);
+}
+
+/* 手機上單手要按得到，所以做得很大。 */
+.buyer-actions button {
+  min-height: 58px;
+  border: none;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.buyer-actions button:first-child {
+  border-right: 1px solid var(--line);
+}
+
+.buyer-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.buyer-yes[data-on="true"] {
+  background: var(--gold-500);
+  color: #fff;
+}
+
+.buyer-no[data-on="true"] {
+  background: var(--ink-soft);
+  color: #fff;
+}
+
+.buyer-foot {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  text-align: center;
+}
+
+.buyer-foot p {
+  color: var(--ink-soft);
+  line-height: 1.9;
+  margin: 0 0 16px;
+}
+
+.buyer-page .form-message,
+.buyer-page .empty-note {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+@media (min-width: 700px) {
+  .buyer-photo {
+    height: 280px;
+  }
+}
+
+@media (max-width: 380px) {
+  .buyer-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =====================================================
+   帶看助手：帶看單（列印用）
+   輸出方式是瀏覽器的「列印 → 儲存為 PDF」，所以沒有裝任何 PDF 套件。
+   ===================================================== */
+
+.report-page {
+  min-height: 100vh;
+  background: var(--surface-soft);
+  padding: 24px 16px 60px;
+}
+
+.report-toolbar {
+  width: min(820px, 100%);
+  margin: 0 auto 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.report-sheet {
+  width: min(820px, 100%);
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 32px;
+  color: #16121c;
+}
+
+.report-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  border-bottom: 2px solid var(--navy-800);
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.report-head h1 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.report-head p {
+  margin: 0;
+  color: #5b5266;
+  font-size: 14px;
+}
+
+.report-brand {
+  text-align: right;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.report-brand b {
+  color: var(--navy-800);
+}
+
+.report-summary {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  background: var(--surface-soft);
+  border-radius: 6px;
+  line-height: 1.8;
+  font-size: 14px;
+}
+
+.report-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 16px;
+  /* 一間房不要被分頁切成兩半 */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-item-head {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.report-order {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--navy-800);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.report-item-head h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.report-address {
+  margin: 0;
+  color: #5b5266;
+  font-size: 13px;
+}
+
+.report-price {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--teal-600);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.report-item-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.report-photo {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid var(--line);
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.report-table th {
+  background: var(--surface-soft);
+  color: #5b5266;
+  font-weight: 700;
+  width: 76px;
+  white-space: nowrap;
+}
+
+.report-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.report-leg,
+.report-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #5b5266;
+  line-height: 1.8;
+}
+
+.report-note {
+  border-left: 3px solid var(--gold-500);
+  padding-left: 12px;
+}
+
+.report-foot {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 20px;
+}
+
+.report-foot p {
+  margin: 0;
+  font-size: 12px;
+  color: #5b5266;
+  line-height: 1.8;
+}
+
+@media (max-width: 640px) {
+  .report-sheet {
+    padding: 20px;
+  }
+
+  .report-item-body {
+    grid-template-columns: 1fr;
+  }
+
+  .report-head {
+    flex-direction: column;
+  }
+
+  .report-brand {
+    text-align: left;
+  }
+}
+
+@media print {
+  /* 列印時只留單子本身：工具列、頁面背景、外框都拿掉。 */
+  .no-print {
+    display: none !important;
+  }
+
+  .report-page {
+    background: #fff;
+    padding: 0;
+  }
+
+  .report-sheet {
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .report-item {
+    border-color: #999;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

@@ -25,3 +25,34 @@
 - 不真的寄信、不呼叫 LINE、不寫入 Google 日曆。
 - 不把 `node_modules`、`.next`、`.env` 或 `data/appointments.json` 提交到 Git。
 - 只在使用者明確要求時，才修改姓名、電話、社群連結與品牌色。
+
+## 帶看助手（案源庫 → 買方勾選 → 路線 → 帶看單）
+
+2026-08 新增的第二個模組，跟預約系統各自獨立。
+
+- 入口：`/admin/listings`（案源庫）、`/admin/tours`（帶看單）、`/tour/[token]`（買方，免登入）
+- 開關：`TOUR_ENABLED`。跟 `BOOKING_ENABLED` **刻意分開**，兩者前提條件不同，不要合併。
+- 儲存：Supabase Postgres（`supabase/schema.sql`），不是本機 JSON 檔。
+  預約系統仍維持檔案版本，兩套併存是刻意的取捨，不要順手統一。
+- 案源可以手動建立，也可以由本機的匯入腳本寫進資料庫。
+  匯入腳本不在這個 repo 裡（見 `.gitignore`），也不隨 Vercel 部署。
+
+### 動這個模組之前一定要知道的事
+
+**外部來源的資料一律當成不可信。** 對方限速或改版時，回來的可能不是錯誤碼，
+而是看起來正常的錯誤數值。因此有一道「資料合理性閘門」
+（`src/lib/listings.ts` 的 `checkListingSanity`），沒過的標成 `needs_review`，
+**永遠不會出現在買方頁**。`addTourItems` 與買方頁各擋一次，兩道都要留著，不要合併成一道。
+
+`crawl_runs` 資料表與 `crawlerLooksBroken()` 是用來讓「匯入已經悄悄失效」這件事
+在後台變成紅字，而不是讓人繼續拿舊資料去跟客戶談。
+
+新增任何 `/api` 或 `/admin` 路由時，必須到 `src/middleware.ts` 的 `featureOf()` 登記，
+沒登記的路徑會被當成未知路徑直接 404（fail closed）。
+
+### 安全邊界（補充）
+
+- `SUPABASE_SERVICE_ROLE_KEY` 可繞過所有資料表權限，只能存在 `.env.local` 或 Vercel 環境變數，
+  絕不可出現在任何 `"use client"` 檔案。`src/lib/db.ts` 開頭的 `import "server-only"` 就是在擋這件事。
+- 不把外部來源的圖片轉存到自己的網域，只存網址並連回原始刊登頁。
+- 買方連結（`/tour/[token]`）內容屬於個資：`robots.ts` 與頁面 metadata 兩層都要保持 noindex。

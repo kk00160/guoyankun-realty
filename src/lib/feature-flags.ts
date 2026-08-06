@@ -19,3 +19,14 @@ export const BOOKING_HREF = BOOKING_ENABLED ? "/card/booking" : PROFILE.social.l
 export const BOOKING_LINK_PROPS = BOOKING_ENABLED
   ? {}
   : { target: "_blank", rel: "noreferrer" as const };
+
+/**
+ * 帶看助手（案源庫、帶看單、買方勾選頁）的總開關。
+ *
+ * 跟 BOOKING_ENABLED 刻意分開，因為兩者的前提條件不同：
+ * 預約系統卡在「資料存本機檔案」，帶看系統則是走 Supabase，可以先單獨上線。
+ * 綁在同一個開關的話，等於為了開帶看被迫把還不能上線的預約系統一起打開。
+ *
+ * 一樣是 fail closed：沒設成 true 就整組 404。
+ */
+export const TOUR_ENABLED = process.env.TOUR_ENABLED === "true";

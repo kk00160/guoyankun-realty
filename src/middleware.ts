@@ -2,24 +2,69 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * 預約系統與後台的存取控制。
+ * 預約系統、帶看助手與後台的存取控制。
  *
  * 兩道關卡（都是 fail closed，沒設定就是擋住）：
  *
- * 1. BOOKING_ENABLED - 線上預約總開關。
- *    未設為 true 時，預約與後台一律 404。
- *    原因：預約資料寫入本機檔案，在 Vercel 等無伺服器平台不持久，客戶預約會遺失。
+ * 1. 功能開關 - 每個路徑先歸屬到一個功能，該功能沒開就 404。
+ *    BOOKING_ENABLED：線上預約。資料寫本機檔案，雲端平台不持久，客戶預約會遺失。
+ *    TOUR_ENABLED   ：帶看助手。走 Supabase，可以獨立於預約系統上線。
+ *    兩個開關刻意分開：綁在一起等於為了開帶看被迫打開還不能上線的預約系統。
  *
  * 2. ADMIN_PASSWORD - 後台密碼。
  *    後台與管理用 API 需通過 HTTP Basic 驗證才能存取。
  *    沒設密碼就一律擋住，避免「忘了設」等於門戶大開。
  */
 const BOOKING_ENABLED = process.env.BOOKING_ENABLED === "true";
+const TOUR_ENABLED = process.env.TOUR_ENABLED === "true";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 
-/** 只有本人能用的路徑：後台頁面，以及可讀取／竄改全部預約的 API。 */
+type Feature = "booking" | "tour" | null;
+
+/**
+ * 這個路徑屬於哪個功能。
+ *
+ * ⚠️ 新增任何 /api 或 /admin 路由時，必須在這裡登記。
+ *    沒登記的路徑會被當成未知路徑直接 404（見 middleware 第一關），
+ *    這是刻意的：忘了登記的後果是「功能不通」，而不是「沒有防護就上線」。
+ */
+function featureOf(pathname: string): Feature {
+  // 帶看助手。/tour 與 /api/tour 是給買方的公開路徑，不需要密碼但受開關管制。
+  if (
+    pathname.startsWith("/tour") ||
+    pathname.startsWith("/api/tour") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/admin/listings") ||
+    pathname.startsWith("/admin/tours")
+  ) {
+    return "tour";
+  }
+
+  // 線上預約。/api/appointment（單數，客戶送出用）與 /api/appointments（複數，後台用）都涵蓋。
+  if (
+    pathname.startsWith("/card/booking") ||
+    pathname.startsWith("/api/appointment") ||
+    pathname.startsWith("/admin/appointments")
+  ) {
+    return "booking";
+  }
+
+  return null;
+}
+
+/**
+ * 只有本人能用的路徑：所有後台頁面，以及可讀取／竄改資料的管理 API。
+ *
+ * 這裡用 /admin 開頭一網打盡，未來新增後台頁面預設就是受保護的。
+ * 反過來說，買方用的 /tour 與 /api/tour 不在這裡 —— 買方免登入，
+ * 靠的是猜不到、可撤銷、有到期日的 token。
+ */
 function isAdminPath(pathname: string) {
-  return pathname.startsWith("/admin") || pathname.startsWith("/api/appointments");
+  return (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/appointments")
+  );
 }
 
 /** 長度固定的比對，避免用回應時間逐字元猜密碼。 */
@@ -62,7 +107,11 @@ function notFound(pathname: string) {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (!BOOKING_ENABLED) return notFound(pathname);
+  // 第一關：功能開關。認不出屬於哪個功能的路徑，一律當作沒開。
+  const feature = featureOf(pathname);
+  if (feature === null) return notFound(pathname);
+  if (feature === "booking" && !BOOKING_ENABLED) return notFound(pathname);
+  if (feature === "tour" && !TOUR_ENABLED) return notFound(pathname);
 
   if (isAdminPath(pathname) && !hasValidCredentials(request)) {
     // 回 401 讓瀏覽器跳出輸入框；沒設密碼時同樣擋住。
@@ -79,5 +128,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/card/booking/:path*", "/api/:path*"]
+  matcher: ["/admin/:path*", "/card/booking/:path*", "/api/:path*", "/tour/:path*"]
 };

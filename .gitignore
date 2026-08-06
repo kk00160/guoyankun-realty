@@ -18,3 +18,6 @@ npm-debug.log*
 # 課程教材附的講師照片，非本站使用
 public/card/abin.jpg
 .vercel
+
+# 本機專用的資料匯入腳本與其暫存檔。不進版控，也不隨部署上線。
+scripts/

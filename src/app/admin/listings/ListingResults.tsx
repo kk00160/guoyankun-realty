@@ -13,6 +13,7 @@ import {
 } from "@/lib/listings";
 import { type ListingQuery, buildListingHref, describeQuery } from "@/lib/listing-filters";
 import type { ListingPage } from "@/lib/tour-store";
+import ListingDetail from "./ListingDetail";
 
 /**
  * 搜尋結果 + 勾選加入帶看單。
@@ -33,6 +34,10 @@ export default function ListingResults({
   const [tourId, setTourId] = useState(tours[0]?.id ?? "");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
+  // 產好的買方連結留在畫面上，不用再跳到帶看單頁去複製。
+  const [madeLink, setMadeLink] = useState<{ url: string; title: string; count: number } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   function toggle(id: string) {
     setSelected((current) =>
@@ -93,6 +98,55 @@ export default function ListingResults({
     }
   }
 
+  /**
+   * 挑好 → 直接產生買方連結。
+   *
+   * 原本要先去 /admin/tours 開單、回來勾選、再回去複製連結，三頁跳來跳去；
+   * 沒有帶看單的時候更是直接卡死。這支一次做完，連結當場給你。
+   * 帶看單名稱預設用搜尋條件，之後在帶看單頁還可以改。
+   */
+  async function makeLink() {
+    if (selected.length === 0) return;
+    setBusy("link");
+    setMessage("");
+    try {
+      const title = `${describeQuery(query)}　${new Date().toLocaleDateString("zh-TW")}`;
+      const response = await fetch("/api/admin/tours/quick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, listingIds: selected })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "產生連結失敗");
+
+      setMadeLink({
+        url: `${window.location.origin}/tour/${payload.token}`,
+        title: payload.tour.title,
+        count: payload.added
+      });
+      const skipped: string[] = Array.isArray(payload.skipped) ? payload.skipped : [];
+      if (skipped.length > 0) {
+        setMessage(`${skipped.length} 筆待確認的沒有加入：${skipped.join("、")}`);
+      }
+      setSelected([]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "產生連結失敗");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function copyLink() {
+    if (!madeLink) return;
+    try {
+      await navigator.clipboard.writeText(madeLink.url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setMessage("瀏覽器不給複製，請手動選取連結。");
+    }
+  }
+
   const from = (result.page - 1) * 24 + 1;
   const to = Math.min(result.page * 24, result.total);
 
@@ -123,7 +177,7 @@ export default function ListingResults({
             data-status={listing.status}
             data-selected={selected.includes(listing.id)}
           >
-            <label className="listing-pick">
+            <label className="listing-pick" onClick={(e) => e.stopPropagation()}>
               <input
                 type="checkbox"
                 checked={selected.includes(listing.id)}
@@ -133,12 +187,18 @@ export default function ListingResults({
               <span>加入帶看單</span>
             </label>
 
-            {/* 原生 img：next/image 會把來源網站的圖片抓下來重新代管，這裡只做外連。 */}
-            {listing.images[0] && (
-              <img className="listing-photo" src={listing.images[0]} alt="" loading="lazy" />
-            )}
-
-            <h3>{listing.title}</h3>
+            {/* 整張卡片可點開詳細；勾選框在上面，已用 stopPropagation 隔開。 */}
+            <button type="button" className="listing-open" onClick={() => setOpenId(listing.id)}>
+              {/* 原生 img：next/image 會把來源網站的圖片抓下來重新代管，這裡只做外連。 */}
+              {listing.images[0] && (
+                <img className="listing-photo" src={listing.images[0]} alt="" loading="lazy" />
+              )}
+              {listing.images.length > 1 && (
+                <span className="listing-photo-count">{listing.images.length} 張</span>
+              )}
+              <h3>{listing.title}</h3>
+              <span className="listing-more">看詳細資料與照片 →</span>
+            </button>
             <div className="listing-price">{formatPrice(listing.totalPrice)}</div>
 
             <dl className="listing-meta">
@@ -218,15 +278,44 @@ export default function ListingResults({
         </nav>
       )}
 
+      {madeLink && (
+        <div className="made-link">
+          <div>
+            <b>買方連結已產生</b>
+            <span>
+              　{madeLink.title}　·　{madeLink.count} 間
+            </span>
+          </div>
+          <div className="made-link-row">
+            <code>{madeLink.url}</code>
+            <button type="button" className="button" onClick={copyLink}>
+              {copied ? "已複製" : "複製連結"}
+            </button>
+            <a className="button-secondary" href={madeLink.url} target="_blank" rel="noreferrer">
+              預覽買方看到的樣子
+            </a>
+            <button type="button" className="button-secondary" onClick={() => setMadeLink(null)}>
+              關閉
+            </button>
+          </div>
+          <p className="made-link-note">
+            把連結傳給買方就好。他勾完「想看」，你在帶看單那邊會即時看到，接著就能排路線。
+          </p>
+        </div>
+      )}
+
       {selected.length > 0 && (
         <div className="select-bar">
           <span>已選 {selected.length} 筆</span>
-          {tours.length === 0 ? (
-            <Link href="/admin/tours" className="button">
-              先去開一張帶看單
-            </Link>
-          ) : (
+
+          <button type="button" className="button" onClick={makeLink} disabled={busy === "link"}>
+            {busy === "link" ? "產生中…" : "產生買方連結"}
+          </button>
+
+          {/* 想併進已經開好的單才需要這個，平常直接按上面那顆就好。 */}
+          {tours.length > 0 && (
             <>
+              <span className="select-bar-or">或加進現有的</span>
               <select value={tourId} onChange={(event) => setTourId(event.target.value)}>
                 {tours.map((tour) => (
                   <option key={tour.id} value={tour.id}>
@@ -234,16 +323,31 @@ export default function ListingResults({
                   </option>
                 ))}
               </select>
-              <button type="button" className="button" onClick={addToTour} disabled={busy === "add"}>
-                {busy === "add" ? "加入中…" : "加入帶看單"}
+              <button type="button" className="button-secondary" onClick={addToTour} disabled={busy === "add"}>
+                {busy === "add" ? "加入中…" : "加入"}
               </button>
             </>
           )}
+
           <button type="button" className="button-secondary" onClick={() => setSelected([])}>
             取消選取
           </button>
         </div>
       )}
+
+      {openId && (() => {
+        const listing = rows.find((row) => row.id === openId);
+        if (!listing) return null;
+        return (
+          <ListingDetail
+            listing={listing}
+            selected={selected.includes(listing.id)}
+            onToggle={() => toggle(listing.id)}
+            onClose={() => setOpenId(null)}
+          />
+        );
+      })()}
+
     </>
   );
 }

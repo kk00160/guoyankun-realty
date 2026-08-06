@@ -53,8 +53,14 @@ export function db() {
   const { url, key } = readEnv();
 
   if (!url || !key) {
+    // 講出「是哪一個」不見了。只說變數名稱，不洩漏任何值。
+    // 原本只說「尚未設定」，結果 Vercel 上明明四個變數都設了，卻查不出是哪個沒生效。
+    const missing = [!url && "SUPABASE_URL", !key && "SUPABASE_SERVICE_ROLE_KEY"]
+      .filter(Boolean)
+      .join(" 與 ");
     throw new Error(
-      "帶看系統的資料庫尚未設定。請在 .env.local 填入 SUPABASE_URL 與 SUPABASE_SERVICE_ROLE_KEY。"
+      `帶看系統的資料庫尚未設定：讀不到 ${missing}。` +
+        "本機請檢查 .env.local；正式站請檢查 Vercel 的 Environment Variables（改完要重新部署）。"
     );
   }
 

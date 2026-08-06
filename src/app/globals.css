@@ -2579,3 +2579,207 @@ a {
   color: #ffc9d1;
   overflow-wrap: anywhere;
 }
+
+/* =====================================================
+   案源庫：篩選優先
+   進頁面先看到篩選器，按搜尋才列物件。
+   ===================================================== */
+
+.filter-panel {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+
+.filter-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.filter-panel-head h2 {
+  margin: 0;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-count {
+  background: var(--gold-500);
+  color: #fff;
+  border-radius: 999px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 12px;
+  padding: 0 7px;
+}
+
+.filter-toggle {
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #dbe8f8;
+  border-radius: 6px;
+  padding: 6px 13px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.filter-body {
+  border-top: 1px solid #243955;
+  padding: 16px 18px 18px;
+}
+
+.filter-row-block {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px solid #1b2c47;
+}
+
+.filter-row-block:last-of-type {
+  border-bottom: none;
+}
+
+.filter-label {
+  color: #7f92ab;
+  font-size: 14px;
+  font-weight: 800;
+  padding-top: 6px;
+}
+
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+/* 37 個行政區用格狀排，一眼掃得完 */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+}
+
+.chip {
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #c4d3e5;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.chip:hover {
+  border-color: #4a648c;
+}
+
+.chip[data-on="true"] {
+  background: var(--gold-500);
+  border-color: var(--gold-500);
+  color: #fff;
+  font-weight: 800;
+}
+
+.chip-any[data-on="true"] {
+  background: transparent;
+  border-color: var(--gold-500);
+  color: var(--gold-on-dark);
+}
+
+.filter-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #7f92ab;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.filter-custom input {
+  width: 82px;
+  min-height: 34px;
+  border-radius: 6px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #f5f8fc;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.filter-keyword {
+  flex: 1 1 280px;
+  min-height: 38px;
+  border-radius: 6px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #f5f8fc;
+  padding: 8px 12px;
+  font: inherit;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #243955;
+}
+
+.result-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #243955;
+  flex-wrap: wrap;
+}
+
+.result-head b {
+  font-size: 16px;
+}
+
+.result-count {
+  color: #9fb0c7;
+  font-size: 14px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 22px;
+  color: #9fb0c7;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .filter-row-block {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .filter-label {
+    padding-top: 0;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  }
+}

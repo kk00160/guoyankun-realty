@@ -1,5 +1,12 @@
 import "server-only";
 import { db, readWithRetry } from "@/lib/db";
+import {
+  type ListingQuery,
+  PAGE_SIZE,
+  PING_BANDS,
+  PRICE_BANDS,
+  bandRange
+} from "@/lib/listing-filters";
 import type { ListingUpdate, TourUpdate } from "@/lib/db-schema";
 import {
   type Listing,
@@ -52,37 +59,77 @@ function readOne<T>(
 // 案源
 // ---------------------------------------------------------------
 
-export type ListingFilters = {
-  district?: string;
-  status?: ListingStatus | "all";
-  minPrice?: number;
-  maxPrice?: number;
-  keyword?: string;
+export type ListingPage = {
+  rows: Listing[];
+  total: number;
+  page: number;
+  pageCount: number;
 };
 
-export async function listListings(filters: ListingFilters = {}): Promise<Listing[]> {
-  let query = db().from("listings").select("*");
+/**
+ * 依條件查案源。
+ *
+ * 篩選、排序、分頁全部在資料庫做。
+ * 之前是撈 500 筆回來讓瀏覽器篩 —— 案源庫長到上萬筆之後，
+ * 那會安靜地給出殘缺結果：你搜「東區」看到 8 筆，就以為東區只有 8 筆。
+ */
+export async function listListings(query: ListingQuery): Promise<ListingPage> {
+  const build = () => {
+    let q = db().from("listings").select("*", { count: "exact" });
 
-  // 預設不顯示已封存與已成交，那些只是留著備查。
-  if (!filters.status || filters.status === "all") {
-    query = query.in("status", ["active", "needs_review"]);
-  } else {
-    query = query.eq("status", filters.status);
-  }
+    // 預設不顯示已封存與已成交，那些只是留著備查。
+    if (query.status === "all") q = q.in("status", ["active", "needs_review"]);
+    else q = q.eq("status", query.status);
 
-  if (filters.district) query = query.eq("district", filters.district);
-  if (typeof filters.minPrice === "number") query = query.gte("total_price", filters.minPrice);
-  if (typeof filters.maxPrice === "number") query = query.lte("total_price", filters.maxPrice);
-  if (filters.keyword) query = query.ilike("title", `%${filters.keyword}%`);
+    if (query.districts.length) q = q.in("district", query.districts);
+    if (query.houseTypes.length) q = q.in("house_type", query.houseTypes);
 
-  // needs_review 排最前面，因為那是需要你動手的；其餘照最近看到的時間。
-  const rows = await readList(
-    () =>
-      query.order("status", { ascending: true }).order("last_seen_at", { ascending: false }).limit(500),
+    // 自訂售價優先，填了就蓋過級距。
+    const priceBand = bandRange(query.priceBands, PRICE_BANDS);
+    const min = query.minPrice ?? priceBand.min;
+    const max = query.maxPrice ?? priceBand.max;
+    if (min !== null) q = q.gte("total_price", min);
+    if (max !== null) q = q.lte("total_price", max);
+
+    const ping = bandRange(query.pingBands, PING_BANDS);
+    if (ping.min !== null) q = q.gte("ping", ping.min);
+    if (ping.max !== null) q = q.lte("ping", ping.max);
+
+    // 格局存成「3房2廳2衛」，所以比對開頭。5+ 展開成 5 到 9 房。
+    if (query.rooms.length) {
+      const prefixes = query.rooms.flatMap((room) => (room === "5+" ? ["5", "6", "7", "8", "9"] : [room]));
+      q = q.or(prefixes.map((n) => `layout.like.${n}房%`).join(","));
+    }
+
+    if (query.keyword) {
+      // 逗號與括號是 PostgREST 的 or() 語法字元，先清掉避免查詢被拆壞。
+      const safe = query.keyword.replace(/[%,()]/g, "");
+      if (safe) q = q.or(`title.ilike.%${safe}%,address.ilike.%${safe}%`);
+    }
+
+    return q;
+  };
+
+  const from = (query.page - 1) * PAGE_SIZE;
+
+  // 待確認排最前面（那是需要你動手的），其餘照最近更新時間。
+  const result = await readWithRetry<{ rows: Record<string, unknown>[]; count: number }>(
+    async () => {
+      const { data, error, count } = await build()
+        .order("status", { ascending: true })
+        .order("last_seen_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      return { data: { rows: (data ?? []) as Record<string, unknown>[], count: count ?? 0 }, error };
+    },
     "讀取案源"
-  ) as Record<string, unknown>[];
+  );
 
-  return rows.map(toListing);
+  return {
+    rows: result.rows.map(toListing),
+    total: result.count,
+    page: query.page,
+    pageCount: Math.max(1, Math.ceil(result.count / PAGE_SIZE))
+  };
 }
 
 export async function getListing(id: string): Promise<Listing | null> {

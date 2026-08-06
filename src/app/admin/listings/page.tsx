@@ -3,15 +3,10 @@ import Topbar from "@/app/_components/Topbar";
 import DbErrorNotice from "@/app/admin/_components/DbErrorNotice";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
 import { DB_CONFIGURED } from "@/lib/db";
-import type { Listing, ListingStatus } from "@/lib/listings";
-import {
-  type CrawlRun,
-  crawlerLooksBroken,
-  listListings,
-  listTours,
-  recentCrawlRuns
-} from "@/lib/tour-store";
-import ListingBoard from "./ListingBoard";
+import { parseListingQuery } from "@/lib/listing-filters";
+import { type ListingPage, listListings, listTours } from "@/lib/tour-store";
+import FilterPanel from "./FilterPanel";
+import ListingResults from "./ListingResults";
 
 export const dynamic = "force-dynamic";
 
@@ -21,38 +16,55 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-const STATUS_PARAMS: ListingStatus[] = ["active", "needs_review", "archived", "sold"];
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="admin-page">
+      <Topbar admin title="案源庫" />
+      <div className="admin-shell">{children}</div>
+    </div>
+  );
+}
 
 export default async function ListingsPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   if (!DB_CONFIGURED) {
+    return (
+      <Shell>
+        <DbSetupNotice />
+      </Shell>
+    );
+  }
+
+  const query = parseListingQuery(await searchParams);
+
+  // 還沒按過搜尋 → 只給篩選器，不列物件。
+  if (!query.searched) {
     return (
       <div className="admin-page">
         <Topbar admin title="案源庫" />
         <div className="admin-shell">
-          <DbSetupNotice />
+          <div className="admin-heading">
+            <div>
+              <h1>案源庫</h1>
+              <p>先選條件，按搜尋。挑好的物件加進帶看單，就能產生買方連結。</p>
+            </div>
+          </div>
+          <FilterPanel query={query} defaultOpen />
         </div>
       </div>
     );
   }
 
-  const params = await searchParams;
-  const status = STATUS_PARAMS.includes(params.status as ListingStatus)
-    ? (params.status as ListingStatus)
-    : "all";
-
-  let listings: Listing[] = [];
+  let result: ListingPage = { rows: [], total: 0, page: 1, pageCount: 1 };
   let tours: { id: string; title: string }[] = [];
-  let runs: CrawlRun[] = [];
   let loadError = "";
 
-  // 案源與帶看單是這一頁的本體，讀不到就只能顯示錯誤。
   try {
-    [listings, tours] = await Promise.all([
-      listListings({ status }),
+    [result, tours] = await Promise.all([
+      listListings(query),
       listTours().then((rows) =>
         rows.filter((row) => row.status === "active").map((row) => ({ id: row.id, title: row.title }))
       )
@@ -61,38 +73,29 @@ export default async function ListingsPage({
     loadError = error instanceof Error ? error.message : "讀取資料失敗";
   }
 
-  // 匯入紀錄只拿來顯示「爬蟲是不是壞了」的提示，是附屬資訊。
-  // 刻意獨立 try —— 原本跟上面放在同一個 Promise.all 裡，
-  // 結果這支查詢失敗一次，整個案源庫就跟著掛掉，明明 62 筆案源都讀得到。
-  // 附屬資訊不該有能力弄垮主功能。
-  try {
-    runs = await recentCrawlRuns();
-  } catch {
-    runs = [];
-  }
-
-  // 設定是好的、只是這次讀取失敗 —— 不要拿設定指引嚇人。
   if (loadError) {
     return (
-      <div className="admin-page">
-        <Topbar admin title="案源庫" />
-        <div className="admin-shell">
-          <DbErrorNotice detail={loadError} retryHref="/admin/listings" />
-        </div>
-      </div>
+      <Shell>
+        <DbErrorNotice detail={loadError} retryHref="/admin/listings" />
+      </Shell>
     );
   }
 
   return (
     <div className="admin-page">
       <Topbar admin title="案源庫" />
-      <ListingBoard
-        listings={listings}
-        tours={tours}
-        status={status}
-        crawlerHealth={crawlerLooksBroken(runs)}
-        latestRun={runs[0] ?? null}
-      />
+      <div className="admin-shell">
+        <div className="admin-heading">
+          <div>
+            <h1>案源庫</h1>
+            <p>勾選要給買方看的物件，加進帶看單後就能複製連結。</p>
+          </div>
+        </div>
+
+        {/* 搜過之後預設收合，把版面讓給結果；要改條件再展開。 */}
+        <FilterPanel query={query} defaultOpen={false} />
+        <ListingResults query={query} result={result} tours={tours} />
+      </div>
     </div>
   );
 }

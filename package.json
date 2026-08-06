@@ -24,7 +24,8 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "cross-env": "^10.1.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vercel": "^58.7.1"
   },
   "engines": {
     "node": ">=20.9.0"

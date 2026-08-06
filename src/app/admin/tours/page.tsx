@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Topbar from "@/app/_components/Topbar";
 import DbErrorNotice from "@/app/admin/_components/DbErrorNotice";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
-import { DB_CONFIGURED } from "@/lib/db";
+import { isDbConfigured } from "@/lib/db";
 import { type TourWithCount, listTours } from "@/lib/tour-store";
 import TourBoard from "./TourBoard";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ToursPage() {
-  if (!DB_CONFIGURED) {
+  if (!isDbConfigured()) {
     return (
       <div className="admin-page">
         <Topbar admin title="帶看單" />

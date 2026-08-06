@@ -18,11 +18,30 @@ import type { Database } from "@/lib/db-schema";
  * import 到這支檔案，build 會直接失敗，而不是把 service_role key 打包進前端。
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+/**
+ * 環境變數一律「用到才讀」，不要在模組載入時就抓進常數。
+ *
+ * 踩過的坑：原本寫成 const SUPABASE_URL = process.env.SUPABASE_URL ?? ""，
+ * 部署到 Vercel 之後永遠是空字串 —— 因為那幾個變數在 Vercel 上被標成
+ * Sensitive，而 Sensitive 變數「建置階段讀不到，只有執行期才有」。
+ * 模組層級的讀取會在建置時就被算掉，於是永遠拿到空的。
+ *
+ * 同一份程式在本機完全正常（本機沒有建置期／執行期的差別），
+ * 所以這種錯只會在正式站出現，而且訊息會是「資料庫尚未設定」——
+ * 看起來像沒設定，實際上設了。
+ */
+function readEnv() {
+  return {
+    url: process.env.SUPABASE_URL ?? "",
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+  };
+}
 
 /** 環境變數齊全才算接上資料庫。缺一個就當作沒設定，讓功能整個關閉而不是半殘。 */
-export const DB_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+export function isDbConfigured() {
+  const { url, key } = readEnv();
+  return Boolean(url && key);
+}
 
 let cached: ReturnType<typeof createClient<Database>> | null = null;
 
@@ -31,14 +50,16 @@ let cached: ReturnType<typeof createClient<Database>> | null = null;
  * 不要回一個半殘的 client 讓錯誤延後到某個看不懂的地方才爆。
  */
 export function db() {
-  if (!DB_CONFIGURED) {
+  const { url, key } = readEnv();
+
+  if (!url || !key) {
     throw new Error(
       "帶看系統的資料庫尚未設定。請在 .env.local 填入 SUPABASE_URL 與 SUPABASE_SERVICE_ROLE_KEY。"
     );
   }
 
   if (!cached) {
-    cached = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    cached = createClient<Database>(url, key, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
   }

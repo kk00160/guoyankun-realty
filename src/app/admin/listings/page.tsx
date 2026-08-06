@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Topbar from "@/app/_components/Topbar";
 import DbErrorNotice from "@/app/admin/_components/DbErrorNotice";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
-import { DB_CONFIGURED } from "@/lib/db";
+import { isDbConfigured } from "@/lib/db";
 import { parseListingQuery } from "@/lib/listing-filters";
 import { type ListingPage, listListings, listTours } from "@/lib/tour-store";
 import FilterPanel from "./FilterPanel";
@@ -30,7 +30,7 @@ export default async function ListingsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (!DB_CONFIGURED) {
+  if (!isDbConfigured()) {
     return (
       <Shell>
         <DbSetupNotice />

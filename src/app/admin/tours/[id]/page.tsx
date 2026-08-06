@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Topbar from "@/app/_components/Topbar";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
-import { DB_CONFIGURED } from "@/lib/db";
+import { isDbConfigured } from "@/lib/db";
 import { getTour, listTourEntries } from "@/lib/tour-store";
 import TourDetail from "./TourDetail";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function TourDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  if (!DB_CONFIGURED) {
+  if (!isDbConfigured()) {
     return (
       <div className="admin-page">
         <Topbar admin title="帶看單" />

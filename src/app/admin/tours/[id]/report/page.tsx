@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DB_CONFIGURED } from "@/lib/db";
+import { isDbConfigured } from "@/lib/db";
 import {
   canRoute,
   formatAge,
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 export default async function TourReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!DB_CONFIGURED) notFound();
+  if (!isDbConfigured()) notFound();
 
   const tour = await getTour(id);
   if (!tour) notFound();

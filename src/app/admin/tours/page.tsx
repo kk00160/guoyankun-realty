@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Topbar from "@/app/_components/Topbar";
+import DbErrorNotice from "@/app/admin/_components/DbErrorNotice";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
 import { DB_CONFIGURED } from "@/lib/db";
 import { type TourWithCount, listTours } from "@/lib/tour-store";
@@ -38,7 +39,7 @@ export default async function ToursPage() {
       <div className="admin-page">
         <Topbar admin title="帶看單" />
         <div className="admin-shell">
-          <DbSetupNotice detail={loadError} />
+          <DbErrorNotice detail={loadError} retryHref="/admin/tours" />
         </div>
       </div>
     );

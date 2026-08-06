@@ -45,3 +45,41 @@ export function db() {
 
   return cached;
 }
+
+/**
+ * 會自己好的錯誤。
+ *
+ * 「JWT issued at future」是實際遇過的：Supabase 的閘道與資料庫節點時鐘差了一點點，
+ * 幾秒後就恢復。這種錯誤不該讓整頁掛掉，更不該讓使用者以為自己的設定壞了。
+ */
+const TRANSIENT = /issued at future|jwt expired|fetch failed|econnreset|etimedout|socket hang up|\b(502|503|504)\b/i;
+
+export function isTransientDbError(message: string) {
+  return TRANSIENT.test(message);
+}
+
+/**
+ * 跑一次查詢；遇到會自己好的錯誤就重試，最多三次，間隔遞增。
+ *
+ * 只重試「讀取」是刻意的 —— 寫入重試有可能寫兩次。
+ * 這支只給讀的路徑用（見 tour-store.ts）。
+ */
+export async function readWithRetry<T>(
+  run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
+  what: string
+): Promise<T> {
+  let lastMessage = "";
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await run();
+    if (!error) return (data ?? []) as T;
+
+    lastMessage = error.message;
+    if (!isTransientDbError(lastMessage)) break;
+
+    // 200ms、600ms —— 時鐘偏差通常一兩秒內就過去了。
+    await new Promise((resolve) => setTimeout(resolve, 200 + attempt * 400));
+  }
+
+  throw new Error(`${what}失敗：${lastMessage}`);
+}

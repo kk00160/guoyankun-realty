@@ -2534,3 +2534,48 @@ a {
     margin: 14mm;
   }
 }
+
+/* 資料庫暫時讀不到時的畫面。跟「還沒設定」的 .setup-notice 是兩回事。 */
+.db-error-notice {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 26px;
+  line-height: 1.9;
+}
+
+.db-error-notice h2 {
+  margin: 0 0 10px;
+  font-size: 21px;
+}
+
+.db-error-notice p {
+  margin: 0 0 16px;
+  color: #c4d3e5;
+}
+
+.db-error-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.db-error-notice details {
+  border-top: 1px solid #243955;
+  padding-top: 12px;
+}
+
+.db-error-notice summary {
+  cursor: pointer;
+  color: #7f92ab;
+  font-size: 14px;
+}
+
+.db-error-detail {
+  margin: 10px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: #ffc9d1;
+  overflow-wrap: anywhere;
+}

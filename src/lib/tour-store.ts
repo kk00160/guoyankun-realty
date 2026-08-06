@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { db, readWithRetry } from "@/lib/db";
 import type { ListingUpdate, TourUpdate } from "@/lib/db-schema";
 import {
   type Listing,
@@ -27,9 +27,25 @@ import {
  * 所有查詢都用 service_role key 在伺服器端執行（見 db.ts）。
  */
 
-function unwrap<T>(result: { data: T | null; error: { message: string } | null }, what: string): T {
-  if (result.error) throw new Error(`${what}失敗：${result.error.message}`);
-  return (result.data ?? []) as T;
+/**
+ * 讀取用的包裝：錯誤轉成看得懂的訊息，會自己好的錯誤自動重試。
+ *
+ * 為什麼要重試：實際遇過 Supabase 回「JWT issued at future」——
+ * 它的閘道跟資料庫節點時鐘差了一點點，幾秒後就恢復。
+ * 沒有重試的話，那幾秒剛好開頁面的人會看到整頁掛掉。
+ */
+function readList<T>(
+  run: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  what: string
+) {
+  return readWithRetry<T[]>(run, what);
+}
+
+function readOne<T>(
+  run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
+  what: string
+) {
+  return readWithRetry<T | null>(() => run() as never, what) as Promise<T | null>;
 }
 
 // ---------------------------------------------------------------
@@ -60,8 +76,9 @@ export async function listListings(filters: ListingFilters = {}): Promise<Listin
   if (filters.keyword) query = query.ilike("title", `%${filters.keyword}%`);
 
   // needs_review 排最前面，因為那是需要你動手的；其餘照最近看到的時間。
-  const rows = unwrap(
-    await query.order("status", { ascending: true }).order("last_seen_at", { ascending: false }).limit(500),
+  const rows = await readList(
+    () =>
+      query.order("status", { ascending: true }).order("last_seen_at", { ascending: false }).limit(500),
     "讀取案源"
   ) as Record<string, unknown>[];
 
@@ -69,8 +86,7 @@ export async function listListings(filters: ListingFilters = {}): Promise<Listin
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
-  const { data, error } = await db().from("listings").select("*").eq("id", id).maybeSingle();
-  if (error) throw new Error(`讀取案源失敗：${error.message}`);
+  const data = await readOne(() => db().from("listings").select("*").eq("id", id).maybeSingle(), "讀取案源");
   return data ? toListing(data as Record<string, unknown>) : null;
 }
 
@@ -205,16 +221,18 @@ export async function listTours(): Promise<TourWithCount[]> {
   // 刻意分兩次查而不用 Supabase 的巢狀 select：
   // 巢狀 select 的型別推導要靠 schema 的 Relationships 中繼資料，手寫容易寫錯，
   // 而這裡最多幾十列，在 JS 裡對起來又快又不會錯。
-  const rows = unwrap(
-    await db().from("tours").select("*").order("created_at", { ascending: false }).limit(200),
+  const rows = await readList(
+    () =>
+      db().from("tours").select("*").order("created_at", { ascending: false }).limit(200),
     "讀取帶看單"
   );
 
   const tours = rows.map((row) => toTour(row));
   if (tours.length === 0) return [];
 
-  const items = unwrap(
-    await db()
+  const items = await readList(
+    () =>
+      db()
       .from("tour_items")
       .select("tour_id, buyer_choice")
       .in(
@@ -236,8 +254,7 @@ export async function listTours(): Promise<TourWithCount[]> {
 }
 
 export async function getTour(id: string): Promise<Tour | null> {
-  const { data, error } = await db().from("tours").select("*").eq("id", id).maybeSingle();
-  if (error) throw new Error(`讀取帶看單失敗：${error.message}`);
+  const data = await readOne(() => db().from("tours").select("*").eq("id", id).maybeSingle(), "讀取帶看單");
   return data ? toTour(data as Record<string, unknown>) : null;
 }
 
@@ -245,8 +262,7 @@ export async function getTour(id: string): Promise<Tour | null> {
 export async function getTourByToken(token: string): Promise<Tour | null> {
   if (!isValidTokenFormat(token)) return null;
 
-  const { data, error } = await db().from("tours").select("*").eq("token", token).maybeSingle();
-  if (error) throw new Error(`讀取帶看單失敗：${error.message}`);
+  const data = await readOne(() => db().from("tours").select("*").eq("token", token).maybeSingle(), "讀取帶看單");
   return data ? toTour(data as Record<string, unknown>) : null;
 }
 
@@ -320,8 +336,9 @@ export async function rotateTourToken(id: string): Promise<string> {
 export type TourEntry = TourItem & { listing: Listing };
 
 export async function listTourEntries(tourId: string): Promise<TourEntry[]> {
-  const itemRows = unwrap(
-    await db()
+  const itemRows = await readList(
+    () =>
+      db()
       .from("tour_items")
       .select("*")
       .eq("tour_id", tourId)
@@ -333,8 +350,9 @@ export async function listTourEntries(tourId: string): Promise<TourEntry[]> {
   const items = itemRows.map((row) => toTourItem(row));
   if (items.length === 0) return [];
 
-  const listingRows = unwrap(
-    await db()
+  const listingRows = await readList(
+    () =>
+      db()
       .from("listings")
       .select("*")
       .in(
@@ -363,8 +381,9 @@ export async function listTourEntries(tourId: string): Promise<TourEntry[]> {
 export async function addTourItems(tourId: string, listingIds: string[]) {
   if (listingIds.length === 0) return { added: 0, skipped: [] as string[] };
 
-  const rows = unwrap(
-    await db().from("listings").select("id, title, status").in("id", listingIds),
+  const rows = await readList(
+    () =>
+      db().from("listings").select("id, title, status").in("id", listingIds),
     "讀取案源"
   ) as { id: string; title: string; status: string }[];
 
@@ -445,8 +464,9 @@ export type CrawlRun = {
 };
 
 export async function recentCrawlRuns(limit = 7): Promise<CrawlRun[]> {
-  const rows = unwrap(
-    await db().from("crawl_runs").select("*").order("started_at", { ascending: false }).limit(limit),
+  const rows = await readList(
+    () =>
+      db().from("crawl_runs").select("*").order("started_at", { ascending: false }).limit(limit),
     "讀取匯入紀錄"
   ) as Record<string, unknown>[];
 

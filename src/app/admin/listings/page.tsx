@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Topbar from "@/app/_components/Topbar";
+import DbErrorNotice from "@/app/admin/_components/DbErrorNotice";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
 import { DB_CONFIGURED } from "@/lib/db";
 import type { Listing, ListingStatus } from "@/lib/listings";
@@ -48,24 +49,35 @@ export default async function ListingsPage({
   let runs: CrawlRun[] = [];
   let loadError = "";
 
+  // 案源與帶看單是這一頁的本體，讀不到就只能顯示錯誤。
   try {
-    [listings, tours, runs] = await Promise.all([
+    [listings, tours] = await Promise.all([
       listListings({ status }),
       listTours().then((rows) =>
         rows.filter((row) => row.status === "active").map((row) => ({ id: row.id, title: row.title }))
-      ),
-      recentCrawlRuns()
+      )
     ]);
   } catch (error) {
     loadError = error instanceof Error ? error.message : "讀取資料失敗";
   }
 
+  // 匯入紀錄只拿來顯示「爬蟲是不是壞了」的提示，是附屬資訊。
+  // 刻意獨立 try —— 原本跟上面放在同一個 Promise.all 裡，
+  // 結果這支查詢失敗一次，整個案源庫就跟著掛掉，明明 62 筆案源都讀得到。
+  // 附屬資訊不該有能力弄垮主功能。
+  try {
+    runs = await recentCrawlRuns();
+  } catch {
+    runs = [];
+  }
+
+  // 設定是好的、只是這次讀取失敗 —— 不要拿設定指引嚇人。
   if (loadError) {
     return (
       <div className="admin-page">
         <Topbar admin title="案源庫" />
         <div className="admin-shell">
-          <DbSetupNotice detail={loadError} />
+          <DbErrorNotice detail={loadError} retryHref="/admin/listings" />
         </div>
       </div>
     );

@@ -3089,3 +3089,65 @@ a {
     top: 130px;
   }
 }
+
+/* 詳細視窗：修掉右欄被擠出畫面的問題。
+   縮圖列有 20 張 × 78px，grid 子項預設不會縮到內容寬度以下，
+   會把整個 grid 撐爆、把右邊那欄推到畫面外，結果只看得到照片。 */
+.detail-gallery,
+.detail-side {
+  min-width: 0;
+}
+
+.detail-thumbs {
+  max-width: 100%;
+}
+
+/* 重點數字：不管視窗多窄都在標題底下看得到 */
+.detail-highlights {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  border-bottom: 1px solid #243955;
+  background: #0d1a30;
+}
+
+.detail-highlights .detail-price {
+  margin: 0;
+  font-size: 26px;
+}
+
+.detail-highlights dl {
+  display: flex;
+  gap: 22px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.detail-highlights dt {
+  color: #7f92ab;
+  font-size: 12px;
+}
+
+.detail-highlights dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-tags {
+  margin-bottom: 12px;
+}
+
+.detail-hint {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--gold-500);
+  background: #0a1326;
+  border-radius: 0 6px 6px 0;
+  color: #c4d3e5;
+  font-size: 13px;
+  line-height: 1.7;
+}

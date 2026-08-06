@@ -53,6 +53,19 @@ export type Listing = {
   reviewReasons: string[];
   firstSeenAt: string;
   lastSeenAt: string;
+  /** 主建物坪數。跟權狀坪數一起才算得出公設比。 */
+  mainArea: number | null;
+  /** 用途：住宅／店面／辦公之類。 */
+  kindName: string | null;
+  communityName: string | null;
+  /** 同社區還有幾間在賣。談判時有用：同社區三間一起掛，屋主通常比較軟。 */
+  communitySaleNum: number | null;
+  /** 591 上刊登多久了，例：「55天前」。掛越久議價空間通常越大。 */
+  postedLabel: string | null;
+  /** 誰在賣：仲介還是屋主自售。決定怎麼接洽。 */
+  sellerLabel: string | null;
+  /** 591 的標籤，例：有陽台、近捷運。 */
+  tags: string[];
 };
 
 /** Supabase 回傳的是 snake_case，統一在這裡轉成前端用的 camelCase。 */
@@ -82,8 +95,46 @@ export function toListing(row: Record<string, unknown>): Listing {
     status: (row.status ?? "active") as ListingStatus,
     reviewReasons: Array.isArray(row.review_reasons) ? (row.review_reasons as unknown[]).map(String) : [],
     firstSeenAt: String(row.first_seen_at ?? ""),
-    lastSeenAt: String(row.last_seen_at ?? "")
+    lastSeenAt: String(row.last_seen_at ?? ""),
+    ...readExtras(row.raw)
   };
+}
+
+/**
+ * 從 raw（591 原始回應）補幾個對房仲有用、但沒有獨立欄位的資料。
+ *
+ * 這些欄位匯入時本來就一起存進 raw 了，只是之前沒拿出來用。
+ * 放在這裡而不是加資料表欄位，是因為它們只用來顯示，不需要拿來篩選或排序。
+ */
+function readExtras(raw: unknown) {
+  const source = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const num = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  };
+  const str = (value: unknown) => {
+    const text = value === null || value === undefined ? "" : String(value).trim();
+    return text.length > 0 ? text : null;
+  };
+
+  return {
+    mainArea: num(source.mainarea),
+    kindName: str(source.kind_name),
+    communityName: str(source.community_name),
+    communitySaleNum: num(source.community_sale_num),
+    postedLabel: str(source.refreshtime),
+    sellerLabel: str(source.nick_name) ?? str(source.linkman),
+    tags: Array.isArray(source.tag) ? source.tag.map(String).filter(Boolean).slice(0, 8) : []
+  };
+}
+
+/**
+ * 公設比。買方第一個會問的數字之一，591 沒有直接給，要自己算。
+ * 權狀扣掉主建物就是公設加附屬建物，所以這是概算，不是登記謄本上的數字。
+ */
+export function publicRatio(listing: Pick<Listing, "ping" | "mainArea">) {
+  if (!listing.ping || !listing.mainArea || listing.mainArea >= listing.ping) return null;
+  return (1 - listing.mainArea / listing.ping) * 100;
 }
 
 // ---------------------------------------------------------------

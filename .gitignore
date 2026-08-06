@@ -1,5 +1,7 @@
 node_modules/
 .next/
+# 清快取時搬開的舊目錄。只寫 .next/ 擋不住，曾經整包 528MB 被提交進去。
+.next-stale-*/
 out/
 next-env.d.ts
 *.tsbuildinfo

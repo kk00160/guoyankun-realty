@@ -7,7 +7,8 @@ import {
   formatPing,
   formatPrice,
   formatSeenAt,
-  formatUnitPrice
+  formatUnitPrice,
+  publicRatio
 } from "@/lib/listings";
 import { googleMapsPlaceUrl } from "@/lib/route";
 
@@ -42,17 +43,31 @@ export default function ListingDetail({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, photos.length]);
 
+  const ratio = publicRatio(listing);
+
+  // 一眼要看到的四個數字，放在標題底下，不用捲動。
+  const highlights: [string, string][] = [
+    ["權狀", formatPing(listing.ping)],
+    ["格局", listing.layout ?? "—"],
+    ["屋齡", formatAge(listing.age)],
+    ["單價", formatUnitPrice(listing.unitPrice)]
+  ];
+
   const specs: [string, string][] = [
-    ["總價", formatPrice(listing.totalPrice)],
-    ["單價", formatUnitPrice(listing.unitPrice)],
     ["權狀坪數", formatPing(listing.ping)],
+    ["主建物", listing.mainArea ? `${listing.mainArea.toFixed(1)} 坪` : "—"],
+    ["公設比", ratio === null ? "—" : `約 ${ratio.toFixed(0)}%`],
     ["格局", listing.layout ?? "—"],
     ["屋齡", formatAge(listing.age)],
     ["型態", listing.houseType ?? "—"],
+    ["用途", listing.kindName ?? "—"],
     ["樓層", listing.floorInfo ?? "—"],
     ["車位", listing.parking ?? "—"],
+    ["社區", listing.communityName ?? "—"],
     ["行政區", listing.district ?? "—"],
-    ["地址", listing.address ?? "未提供"]
+    ["地址", listing.address ?? "未提供"],
+    ["刊登", listing.postedLabel ?? "—"],
+    ["刊登者", listing.sellerLabel ?? "—"]
   ];
 
   return (
@@ -64,6 +79,20 @@ export default function ListingDetail({
             ✕
           </button>
         </header>
+
+        {/* 重點數字放最上面：視窗窄的時候規格表會被擠到照片下面，
+            但這一列永遠看得到。 */}
+        <div className="detail-highlights">
+          <div className="detail-price">{formatPrice(listing.totalPrice)}</div>
+          <dl>
+            {highlights.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
 
         <div className="detail-body">
           <div className="detail-gallery">
@@ -121,7 +150,21 @@ export default function ListingDetail({
           </div>
 
           <div className="detail-side">
-            <div className="detail-price">{formatPrice(listing.totalPrice)}</div>
+            {listing.tags.length > 0 && (
+              <div className="tag-row tag-row-left detail-tags">
+                {listing.tags.map((tag) => (
+                  <span key={tag} className="tag">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {listing.communitySaleNum !== null && listing.communitySaleNum > 1 && (
+              <p className="detail-hint">
+                同社區還有 {listing.communitySaleNum} 間在賣 —— 談價時可以拿來比。
+              </p>
+            )}
 
             <dl className="detail-specs">
               {specs.map(([label, value]) => (

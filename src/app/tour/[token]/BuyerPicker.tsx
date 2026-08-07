@@ -18,6 +18,8 @@ import { type BuyerChoice, type TourTimeSlot, formatSlot } from "@/lib/tour";
 type Entry = {
   listingId: string;
   choice: BuyerChoice;
+  /** 阿坤排完看房順序之後才有值（1 開始）。 */
+  visitOrder: number | null;
   listing: Listing;
 };
 
@@ -120,6 +122,23 @@ export default function BuyerPicker({
 
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
   const pickedSlots = useMemo(() => slots.filter((slot) => slot.picked), [slots]);
+
+  /**
+   * 帶看行程。阿坤在後台按過「排路線」之後，物件才會有看房順序。
+   *
+   * 有順序就代表行程定了 —— 這時候買方打開連結最想知道的是
+   * 「我們要看哪幾間、什麼順序」，而不是再挑一次。所以這一區放在最上面。
+   *
+   * 這也是為什麼買方不需要第二條連結：帶看單那一頁是 /admin 底下的後台頁，
+   * 網址傳出去買方只會看到要求輸入密碼的畫面（實際發生過）。
+   */
+  const plan = useMemo(
+    () =>
+      rows
+        .filter((row) => row.visitOrder !== null)
+        .sort((a, b) => (a.visitOrder ?? 0) - (b.visitOrder ?? 0)),
+    [rows]
+  );
 
   /**
    * 買方自己加一個時間。
@@ -256,6 +275,37 @@ export default function BuyerPicker({
       </header>
 
       {message && <p className="form-message">{message}</p>}
+
+      {plan.length > 0 && (
+        <section className="buyer-plan">
+          <h2>看房行程</h2>
+          <p className="buyer-plan-note">
+            {pickedSlots.length > 0
+              ? `時間：${pickedSlots.map((slot) => formatSlot(slot.startsAt)).join("、")}　（正式時間我會再跟你確認）`
+              : "時間還沒定，下面選幾個你方便的時段，我再跟你確認。"}
+          </p>
+          <ol className="buyer-plan-list">
+            {plan.map((entry) => {
+              const place = mapTarget(entry.listing);
+              return (
+                <li key={entry.listingId}>
+                  <b>{entry.listing.title}</b>
+                  <span>
+                    {entry.listing.district ?? ""}
+                    {entry.listing.address ? `　${entry.listing.address}` : ""}
+                    　{formatPrice(entry.listing.totalPrice)}
+                  </span>
+                  {place && (
+                    <a href={mapPlaceUrl(place)} target="_blank" rel="noreferrer">
+                      看地圖
+                    </a>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
 
       <div className="buyer-list">
         {rows.map((entry) => {

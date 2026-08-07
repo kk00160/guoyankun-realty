@@ -1551,6 +1551,72 @@ a {
 }
 
 /* ---------------------------------------------------------------
+   買方頁：看房行程（阿坤排完路線之後才出現）
+   --------------------------------------------------------------- */
+
+.buyer-plan {
+  background: var(--surface-soft);
+  border: 2px solid var(--brand-green);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.buyer-plan h2 {
+  margin: 0 0 6px;
+  font-size: 19px;
+}
+
+.buyer-plan-note {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #5b5266;
+  line-height: 1.8;
+}
+
+.buyer-plan-list {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.buyer-plan-list li {
+  line-height: 1.7;
+}
+
+.buyer-plan-list b {
+  display: block;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.buyer-plan-list span {
+  display: block;
+  font-size: 13px;
+  color: #5b5266;
+}
+
+.buyer-plan-list a {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 帶看單那一頁的提醒：網址不能直接傳給買方。 */
+.report-hint {
+  width: min(820px, 100%);
+  margin: 0 auto 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fff6e0;
+  border: 1px solid #e8cf95;
+  color: #6b4f16;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* ---------------------------------------------------------------
    預約帶看時間（買方：勾時段）
    --------------------------------------------------------------- */
 
@@ -1741,6 +1807,46 @@ a {
 .filter-row a[data-active="true"] {
   background: var(--gold-500);
   border-color: var(--gold-500);
+  color: #fff;
+}
+
+/**
+ * 同一個 .filter-row 裡也會放真正的按鈕（<Link className="button-secondary">）。
+ *
+ * 上面的 .filter-row a 是給篩選標籤設計的：小圓角、深底、灰字。
+ * 它的優先權（0,1,1）比 .button-secondary（0,1,0）高，
+ * 所以「產生帶看單」「去配案系統加物件」會被套成灰字深底，看起來像停用的按鈕。
+ * 這裡把它們的樣式搶回來。
+ */
+.filter-row a.button,
+.filter-row a.button-secondary {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.filter-row a.button-secondary {
+  background: #fff;
+  color: var(--navy-800);
+  border-color: var(--line);
+}
+
+.filter-row a.button-secondary:hover {
+  background: #fff;
+  border-color: var(--navy-700);
+  color: var(--navy-800);
+}
+
+.filter-row a.button {
+  background: var(--gold-500);
+  border-color: var(--gold-500);
+  color: #fff;
+}
+
+.filter-row a.button:hover {
+  background: var(--gold-400);
   color: #fff;
 }
 

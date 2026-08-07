@@ -66,6 +66,8 @@ export default async function BuyerTourPage({ params }: { params: Promise<{ toke
         entries={visible.map((entry) => ({
           listingId: entry.listingId,
           choice: entry.buyerChoice,
+          // 阿坤排完路線之後才有值。有值就代表「行程定了」，買方頁要把順序秀出來。
+          visitOrder: entry.visitOrder,
           listing: entry.listing
         }))}
       />

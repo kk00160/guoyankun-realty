@@ -20,6 +20,7 @@ import {
   routeSummary
 } from "@/lib/route";
 import { getTour, listTourEntries } from "@/lib/tour-store";
+import CopyBuyerLink from "./CopyBuyerLink";
 import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -91,15 +92,23 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
     <div className="report-page">
       <div className="report-toolbar no-print">
         <Link className="button-secondary" href={`/admin/tours/${tour.id}`}>
-          回帶看單
+          回帶看紀錄
         </Link>
         <PrintButton />
+        <CopyBuyerLink token={tour.token} />
         {mapUrls.map((url, index) => (
           <a key={url} className="button-secondary" href={url} target="_blank" rel="noreferrer">
             {mapUrls.length > 1 ? `導航第 ${index + 1} 段` : "Google Maps 導航"}
           </a>
         ))}
       </div>
+
+      {/* 這一頁是 /admin 底下的後台頁，網址列複製出去買方是打不開的（會要密碼）。
+          實際發生過，所以這句話要直接寫在畫面上，而不是等人踩到。 */}
+      <p className="report-hint no-print">
+        這一頁是<b>你自己看的、印出來帶出門的</b>。網址不能直接傳給買方 —— 那是後台網址，
+        他打開會被要求輸入密碼。要給買方看行程，按上面的<b>「複製買方連結」</b>。
+      </p>
 
       <article className="report-sheet">
         <header className="report-head">

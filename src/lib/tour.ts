@@ -38,6 +38,16 @@ export type TourTimeSlot = {
   startsAt: string;
   /** 買方勾了沒 */
   picked: boolean;
+  /**
+   * 這個時段是誰提的。
+   *
+   * agent：阿坤開的候選時段
+   * buyer：買方自己加的（阿坤開的都不方便的時候）
+   *
+   * 要分開是因為兩者的意義完全不同：阿坤開的代表「我這時候有空」，
+   * 買方加的代表「我只有這時候有空，你要想辦法」。混在一起看不出誰要遷就誰。
+   */
+  by: "agent" | "buyer";
 };
 
 export type Tour = {
@@ -94,7 +104,9 @@ export function toTimeSlots(raw: unknown): TourTimeSlot[] {
       return {
         id: typeof bag.id === "string" && bag.id ? bag.id : createSlotId(),
         startsAt,
-        picked: bag.picked === true
+        picked: bag.picked === true,
+        // 舊資料沒有這個欄位，一律當成阿坤開的。
+        by: bag.by === "buyer" ? ("buyer" as const) : ("agent" as const)
       };
     })
     .filter((slot): slot is TourTimeSlot => slot !== null)

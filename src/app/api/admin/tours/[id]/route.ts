@@ -45,7 +45,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         slots.push({
           id: kept?.id ?? createSlotId(),
           startsAt: at.toISOString(),
-          picked: kept?.picked ?? false
+          picked: kept?.picked ?? false,
+          // 「誰提的」也要一起留著，不然買方自己加的時段會被改寫成阿坤開的。
+          by: kept?.by ?? "agent"
         });
       }
 

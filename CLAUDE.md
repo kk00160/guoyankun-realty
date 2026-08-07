@@ -95,6 +95,21 @@ PostgREST 回的是 HTTP 204、`count = null`、`error = null` —— 跟「表�
 新增任何 `/api` 或 `/admin` 路由時，必須到 `src/middleware.ts` 的 `featureOf()` 登記，
 沒登記的路徑會被當成未知路徑直接 404（fail closed）。
 
+### 部署區域（vercel.json）
+
+`regions: ["sin1"]` 是效能設定，不要拿掉。
+
+Vercel 預設把函式跑在 `iad1`（美國維吉尼亞），而 Supabase 在 `ap-southeast-1`（新加坡）。
+實測（2026-08-07，從台南量正式站）：每一頁都要跑
+「台南 → 香港邊緣 → 美國 → 新加坡 → 美國 → 香港 → 台南」，
+連查詢很輕的控台首頁都要 1.2 秒 —— 其中絕大部分是跨太平洋的來回延遲，
+跟 SQL 寫得好不好完全無關。
+
+改成 sin1 之後函式跟資料庫同區，資料庫來回從數百毫秒降到個位數毫秒。
+
+⚠️ 以後如果把 Supabase 專案搬到別的區域，這裡要跟著改。
+兩邊不同區時，症狀是「網站好慢」，不會有任何錯誤訊息。
+
 ### 安全邊界（補充）
 
 - `SUPABASE_SERVICE_ROLE_KEY` 可繞過所有資料表權限，只能存在 `.env.local` 或 Vercel 環境變數，

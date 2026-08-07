@@ -103,15 +103,59 @@ export default function BuyerPicker({
 }) {
   const [rows, setRows] = useState(entries);
   const [slots, setSlots] = useState(timeSlots);
-  const [name, setName] = useState(buyerName ?? "");
-  const [askName, setAskName] = useState(!buyerName);
+  /**
+   * 買方稱呼只拿來打招呼，而且只由阿坤在後台填。
+   *
+   * 以前一進來會先擋一個「先讓我知道怎麼稱呼你」的表單 —— 那一關拿掉了。
+   * 阿坤是把連結直接傳給認識的人，他本來就知道對方是誰；
+   * 為了一個他已經知道的答案，讓客戶多打一次字、多按一次按鈕，
+   * 只會讓人在還沒看到房子之前就先流失。
+   */
+  const name = buyerName ?? "";
   const [openId, setOpenId] = useState<string | null>(null);
+  const [myTime, setMyTime] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(Boolean(submittedAt));
 
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
   const pickedSlots = useMemo(() => slots.filter((slot) => slot.picked), [slots]);
+
+  /**
+   * 買方自己加一個時間。
+   *
+   * 為什麼要有這個：阿坤開的那幾個時段有可能都不方便。
+   * 只給「勾或不勾」的話，買方唯一的表達方式是全部不勾 ——
+   * 而「全部不勾」跟「還沒看」在後台長得一模一樣，這個人就這樣安靜地卡住了。
+   */
+  async function addMyTime(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!myTime) return;
+
+    const at = new Date(myTime);
+    if (Number.isNaN(at.getTime())) {
+      setMessage("那個時間看不懂，請重選一次。");
+      return;
+    }
+
+    setBusy("add-time");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/tour/${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add-time", startsAt: at.toISOString() })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "沒有加成功");
+      if (Array.isArray(payload.slots)) setSlots(payload.slots);
+      setMyTime("");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "沒有加成功，請再試一次。");
+    } finally {
+      setBusy("");
+    }
+  }
 
   /** 買方勾一個時段。跟物件一樣即時存，不必等送出。 */
   async function chooseTime(slotId: string, picked: boolean) {
@@ -170,7 +214,7 @@ export default function BuyerPicker({
       await fetch(`/api/tour/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "submit", buyerName: name.trim() })
+        body: JSON.stringify({ action: "submit" })
       });
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -181,43 +225,6 @@ export default function BuyerPicker({
     } finally {
       setBusy("");
     }
-  }
-
-  async function submitName(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!name.trim()) return;
-    setBusy("name");
-    try {
-      await fetch(`/api/tour/${encodeURIComponent(token)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ buyerName: name.trim() })
-      });
-    } catch {
-      // 存不進去也放行，不要卡住整個流程
-    } finally {
-      setAskName(false);
-      setBusy("");
-    }
-  }
-
-  if (askName) {
-    return (
-      <form className="buyer-gate" onSubmit={submitName}>
-        <h1>{title}</h1>
-        <p>這是{PROFILE.alias}幫你整理的物件清單。先讓我知道怎麼稱呼你：</p>
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          maxLength={50}
-          placeholder="例：陳先生"
-          autoFocus
-        />
-        <button type="submit" className="button" disabled={busy === "name" || !name.trim()}>
-          開始看清單
-        </button>
-      </form>
-    );
   }
 
   const open = openId ? rows.find((row) => row.listingId === openId) : null;
@@ -375,15 +382,17 @@ export default function BuyerPicker({
 
       {rows.length === 0 && <p className="empty-note">這份清單目前還沒有物件，我整理好會再通知你。</p>}
 
-      {/* 預約帶看時間。阿坤沒開時段就整區不出現，不要給買方一個空盒子。 */}
-      {slots.length > 0 && (
-        <section className="buyer-times">
-          <h2>想約什麼時候看？</h2>
-          {/* 這句是阿坤指定要放的：多幾個選項他才排得動。 */}
-          <p className="buyer-times-note">
-            方便的話<b>請選兩個以上的時間</b>，我比較好幫你安排，也不用來回問。
-          </p>
+      {/* 預約帶看時間。
+          阿坤沒開時段時這一區照樣出現 —— 因為買方本來就可以自己提時間，
+          而「我什麼時候有空」是他唯一需要主動給的資訊。 */}
+      <section className="buyer-times">
+        <h2>想約什麼時候看？</h2>
+        {/* 這句是阿坤指定要放的：多幾個選項他才排得動。 */}
+        <p className="buyer-times-note">
+          方便的話<b>請選兩個以上的時間</b>，我比較好幫你安排，也不用來回問。
+        </p>
 
+        {slots.length > 0 && (
           <div className="buyer-time-grid">
             {slots.map((slot) => (
               <button
@@ -394,19 +403,38 @@ export default function BuyerPicker({
                 disabled={busy === slot.id}
               >
                 {formatSlot(slot.startsAt)}
+                {slot.by === "buyer" && <small>你加的</small>}
               </button>
             ))}
           </div>
+        )}
 
-          <p className="buyer-times-state">
-            {pickedSlots.length === 0
-              ? "還沒選時間。都不方便的話直接打給我，我們另外約。"
-              : pickedSlots.length === 1
-                ? "選了 1 個。再多選一個會更好排。"
-                : `選了 ${pickedSlots.length} 個，很好安排，謝謝你 🙌`}
-          </p>
-        </section>
-      )}
+        {/* 自己挑時間。阿坤開的都不方便時，這是唯一能講清楚的方式。 */}
+        <form className="buyer-time-add" onSubmit={addMyTime}>
+          <label htmlFor="buyer-my-time">
+            {slots.length > 0 ? "上面都不方便？自己挑一個：" : "挑一個你方便的時間："}
+          </label>
+          <div>
+            <input
+              id="buyer-my-time"
+              type="datetime-local"
+              value={myTime}
+              onChange={(event) => setMyTime(event.target.value)}
+            />
+            <button type="submit" className="button-secondary" disabled={busy === "add-time" || !myTime}>
+              {busy === "add-time" ? "加入中…" : "加入這個時間"}
+            </button>
+          </div>
+        </form>
+
+        <p className="buyer-times-state">
+          {pickedSlots.length === 0
+            ? "還沒選時間。都不方便的話直接打給我，我們另外約。"
+            : pickedSlots.length === 1
+              ? "選了 1 個。再多選一個會更好排。"
+              : `選了 ${pickedSlots.length} 個，很好安排，謝謝你 🙌`}
+        </p>
+      </section>
 
       <footer className="buyer-foot">
         <p>

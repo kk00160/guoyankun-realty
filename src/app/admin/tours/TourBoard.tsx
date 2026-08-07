@@ -112,19 +112,24 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
       <form className="manual-form" onSubmit={createTour}>
         <div className="manual-grid">
           <label className="span-2">
-            這次要帶誰看 <span className="required">必填</span>
+            {/* 標籤文字要包成「一個」元素。label 是 flex-column，
+                純文字節點跟 <span> 會變成兩個 flex item 被拆成上下兩行，
+                那一欄就比隔壁矮一截 —— 這就是表格看起來沒對齊的原因。 */}
+            <span className="field-label">
+              這次要帶誰看 <span className="required">必填</span>
+            </span>
             <input name="title" required maxLength={100} placeholder="陳先生 8/10 東區看房" />
           </label>
           <label>
-            買方稱呼
+            <span className="field-label">買方稱呼（選填，你自己看的）</span>
             <input name="buyerName" maxLength={50} placeholder="陳先生" />
           </label>
           <label>
-            連結有效天數
+            <span className="field-label">連結有效天數</span>
             <input name="days" type="number" min="1" max="180" defaultValue={30} />
           </label>
           <label className="span-4">
-            出發點（選填，導航連結會從這裡開始）
+            <span className="field-label">出發點（選填，導航連結會從這裡開始）</span>
             <input name="originLabel" maxLength={100} placeholder="例：門市、或當天約的碰面地點" />
           </label>
         </div>

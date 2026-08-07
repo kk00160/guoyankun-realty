@@ -165,7 +165,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
     }
 
     setNewSlot("");
-    void saveSlots([...slots, { id: "", startsAt: at.toISOString(), picked: false }]);
+    void saveSlots([...slots, { id: "", startsAt: at.toISOString(), picked: false, by: "agent" }]);
   }
 
   async function copyLink() {
@@ -261,7 +261,8 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
             {slots.map((slot) => (
               <li key={slot.id} data-picked={slot.picked}>
                 <span>{formatSlot(slot.startsAt)}</span>
-                {slot.picked && <span className="slot-tag">買方要這個</span>}
+                {slot.by === "buyer" && <span className="slot-tag slot-tag-buyer">買方自己提的</span>}
+                {slot.picked && slot.by !== "buyer" && <span className="slot-tag">買方要這個</span>}
                 <button
                   type="button"
                   onClick={() => saveSlots(slots.filter((row) => row.id !== slot.id))}

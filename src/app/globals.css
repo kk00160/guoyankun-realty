@@ -1603,6 +1603,47 @@ a {
   opacity: 0.6;
 }
 
+/* 買方自己加時間。跟上面的候選時段用一條線隔開，
+   讓「從你給的裡面挑」跟「我自己提一個」看起來是兩件事。 */
+.buyer-time-add {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.buyer-time-add label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #5b5266;
+}
+
+.buyer-time-add > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.buyer-time-add input {
+  flex: 1 1 190px;
+  min-height: 48px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 12px;
+  font: inherit;
+}
+
+/* 買方自己加的時段標一下，阿坤才知道那是對方提的、需要他配合。 */
+.buyer-time-grid button small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
 .buyer-times-state {
   margin: 14px 0 0;
   font-size: 13px;
@@ -2075,6 +2116,22 @@ a {
   font-size: 13px;
   font-weight: 800;
   color: #aebfd4;
+}
+
+/* 標籤文字包成一個元素，「必填」才會跟標題同一行。
+   純文字 + <span> 在 flex-column 裡會變成兩個項目被拆成上下兩行。 */
+.manual-grid .field-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 輸入框一律貼齊格子底部。這樣就算某一欄的標籤在窄螢幕上折成兩行，
+   同一列的輸入框仍然對得整整齊齊。 */
+.manual-grid label input,
+.manual-grid label select {
+  margin-top: auto;
 }
 
 /* 欄寬對齊用。目前的排法是「2 + 1 + 1」一列、「4」一列，兩列都剛好填滿，

@@ -184,7 +184,9 @@ export default function ListingBoard({ listings, tours, status, crawlerHealth, l
           </p>
           <div className="manual-grid">
             <label>
-              物件名稱 <span className="required">必填</span>
+              <span className="field-label">
+                物件名稱 <span className="required">必填</span>
+              </span>
               <input name="title" required maxLength={200} placeholder="東區崇明路 3 房電梯" />
             </label>
             <label>

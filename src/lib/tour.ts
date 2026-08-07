@@ -50,9 +50,21 @@ export type TourTimeSlot = {
   by: "agent" | "buyer";
 };
 
+/**
+ * 帶看紀錄的模式。
+ *
+ * pick  ：買方自己勾想看／略過（還在篩物件的階段）
+ * direct：已經談好要看哪幾間，直接給買方一張帶看卡
+ *
+ * 為什麼要分：已經約好的客人再看到「想看／略過」兩顆按鈕，
+ * 會以為事情還沒定案，反而回頭再問一次。
+ */
+export type TourMode = "pick" | "direct";
+
 export type Tour = {
   id: string;
   title: string;
+  mode: TourMode;
   buyerName: string | null;
   token: string;
   expiresAt: string;
@@ -190,6 +202,7 @@ export function toTour(row: Record<string, unknown>): Tour {
   return {
     id: String(row.id),
     title: String(row.title ?? ""),
+    mode: row.mode === "direct" ? "direct" : "pick",
     buyerName: str(row.buyer_name),
     token: String(row.token ?? ""),
     expiresAt: String(row.expires_at ?? ""),

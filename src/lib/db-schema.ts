@@ -18,6 +18,8 @@ type ListingRow = {
   title: string;
   district: string | null;
   address: string | null;
+  /** 阿坤手動補的正確門牌。導航優先用這個，見 route.ts 的 mapTarget()。 */
+  exact_address: string | null;
   lat: number | null;
   lng: number | null;
   total_price: number | null;
@@ -50,6 +52,8 @@ type TourRow = {
   origin_lng: number | null;
   note: string | null;
   submitted_at: string | null;
+  /** pick：買方自己勾　direct：直接給帶看卡，不用買方再挑一次 */
+  mode: string;
   /** 候選帶看時段（TourTimeSlot[]）。見 supabase/2026-08-07-times-and-leads.sql。 */
   time_slots: Json;
   created_at: string;

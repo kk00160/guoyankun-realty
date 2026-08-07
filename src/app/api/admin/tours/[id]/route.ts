@@ -55,6 +55,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return ok({ timeSlots: (await getTour(id))?.timeSlots ?? [] });
     }
 
+    // 切換模式：pick（買方自己勾）／ direct（直接給帶看卡）
+    if (typeof body.mode === "string") {
+      if (body.mode !== "pick" && body.mode !== "direct") return bad("不支援的模式。");
+      await patchTour(id, { mode: body.mode });
+      return ok({ mode: body.mode });
+    }
+
     if (typeof body.status === "string") {
       const status = body.status as TourStatus;
       if (!STATUSES.includes(status)) return bad("不支援的帶看單狀態。");

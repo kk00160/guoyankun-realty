@@ -13,7 +13,7 @@ import {
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
 import { mapPlaceUrl, mapTarget } from "@/lib/route";
-import { type BuyerChoice, type TourTimeSlot, formatSlot } from "@/lib/tour";
+import { type BuyerChoice, type TourMode, type TourTimeSlot, formatSlot } from "@/lib/tour";
 
 type Entry = {
   listingId: string;
@@ -93,6 +93,7 @@ export default function BuyerPicker({
   title,
   buyerName,
   submittedAt,
+  mode,
   entries,
   timeSlots
 }: {
@@ -100,6 +101,8 @@ export default function BuyerPicker({
   title: string;
   buyerName: string | null;
   submittedAt: string | null;
+  /** pick：買方自己勾　direct：直接給帶看卡 */
+  mode: TourMode;
   entries: Entry[];
   timeSlots: TourTimeSlot[];
 }) {
@@ -119,6 +122,14 @@ export default function BuyerPicker({
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(Boolean(submittedAt));
+
+  /**
+   * 帶看卡模式：已經談好要看哪幾間，買方不用再挑一次。
+   *
+   * 不只是把兩顆按鈕藏起來 —— 整頁的語氣都要跟著換。
+   * 已經約好的客人看到「想看／略過」會以為事情還沒定案，反而回頭再問一次。
+   */
+  const direct = mode === "direct";
 
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
   const pickedSlots = useMemo(() => slots.filter((slot) => slot.picked), [slots]);
@@ -252,7 +263,7 @@ export default function BuyerPicker({
     <div className="buyer-shell">
       <header className="buyer-head">
         <h1>{title}</h1>
-        {submitted ? (
+        {submitted && !direct ? (
           <div className="buyer-done">
             <b>已經送出了，謝謝你 🙌</b>
             <p>
@@ -267,11 +278,15 @@ export default function BuyerPicker({
           /* 這份清單是阿坤挑過才送出來的，所以這裡不催進度、不要求「全部選完」。
              想全看、只挑一兩間、或一間都不挑，都是正常答案。 */
           <p>
-            {name ? `${name}，` : ""}這裡有 {rows.length} 間。點卡片可以看更多照片和詳細資料，
-            想看的按「想看」—— 要幾間就幾間，全部都想看也可以。挑好按最下面送出就行。
+            {name ? `${name}，` : ""}
+            {direct
+              ? `這是我們這次要看的 ${rows.length} 間，點卡片可以看更多照片和詳細資料。下面選一下你方便的時間就好。`
+              : `這裡有 ${rows.length} 間。點卡片可以看更多照片和詳細資料，想看的按「想看」—— 要幾間就幾間，全部都想看也可以。挑好按最下面送出就行。`}
           </p>
         )}
-        {interested.length > 0 && <div className="buyer-progress">已挑了 {interested.length} 間</div>}
+        {!direct && interested.length > 0 && (
+          <div className="buyer-progress">已挑了 {interested.length} 間</div>
+        )}
       </header>
 
       {message && <p className="form-message">{message}</p>}
@@ -405,6 +420,7 @@ export default function BuyerPicker({
                 </p>
               </div>
 
+              {!direct && (
               <div className="buyer-actions">
                 <button
                   type="button"
@@ -425,6 +441,7 @@ export default function BuyerPicker({
                   略過
                 </button>
               </div>
+              )}
             </article>
           );
         })}
@@ -498,7 +515,9 @@ export default function BuyerPicker({
 
       {/* 送出列固定在底部。勾選本來就即時存了，這顆按鈕是讓買方知道「我挑完了」，
           也讓阿坤知道可以開始安排帶看。 */}
-      {rows.length > 0 && (
+      {/* 帶看卡模式沒有「送出」這件事 —— 東西已經定了，他只需要選時間，
+          而時間是即時存的。留一顆送不出東西的按鈕只會讓人以為還沒完成。 */}
+      {!direct && rows.length > 0 && (
         <div className="buyer-submit-bar">
           <div>
             <b>{interested.length > 0 ? `想看 ${interested.length} 間` : "還沒挑"}</b>

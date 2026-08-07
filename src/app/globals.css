@@ -1458,6 +1458,51 @@ a {
 }
 
 /* ---------------------------------------------------------------
+   帶看紀錄的模式切換（買方自己勾 / 直接給帶看卡）
+   --------------------------------------------------------------- */
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mode-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #9fb0c7;
+  margin-right: 4px;
+}
+
+.mode-row button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #aebfd4;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-row button[data-on="true"] {
+  background: var(--gold-500);
+  border-color: var(--gold-500);
+  color: #fff;
+}
+
+.mode-hint {
+  margin: -4px 0 12px;
+  font-size: 13px;
+  color: var(--gold-on-dark);
+  line-height: 1.7;
+}
+
+/* ---------------------------------------------------------------
    預約帶看時間（後台：開時段）
    --------------------------------------------------------------- */
 

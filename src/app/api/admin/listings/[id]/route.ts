@@ -38,6 +38,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       ping: optionalNumber(body.ping),
       age: optionalNumber(body.age),
       address: optionalText(body.address, 200),
+      // 你手動補的正確門牌。導航會優先用它（見 route.ts 的 mapTarget）。
+      exactAddress: body.exactAddress === undefined ? undefined : optionalText(body.exactAddress, 200),
       lat,
       lng
     });

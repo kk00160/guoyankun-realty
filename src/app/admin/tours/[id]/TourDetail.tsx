@@ -8,6 +8,7 @@ import { mapDirectionsUrl, mapTarget } from "@/lib/route";
 import {
   BUYER_CHOICE_LABEL,
   type Tour,
+  type TourMode,
   type TourTimeSlot,
   formatSlot,
   formatTourDate,
@@ -31,6 +32,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
   const [copied, setCopied] = useState(false);
   const [slots, setSlots] = useState<TourTimeSlot[]>(tour.timeSlots);
   const [newSlot, setNewSlot] = useState("");
+  const [mode, setMode] = useState<TourMode>(tour.mode);
 
   const interested = rows.filter((row) => row.buyerChoice === "interested").length;
   const rejected = rows.filter((row) => row.buyerChoice === "rejected").length;
@@ -87,6 +89,59 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
       setRows((current) => current.filter((row) => row.listingId !== listingId));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "移除失敗");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  /**
+   * 存這間房子的正確門牌。
+   *
+   * 存在物件上而不是這筆帶看紀錄上：門牌是房子的屬性，不是這次帶看的屬性。
+   * 補一次，以後每一份帶看單、每一條買方連結都直接受惠。
+   */
+  async function saveExactAddress(listingId: string, exactAddress: string) {
+    try {
+      const response = await fetch(`/api/admin/listings/${encodeURIComponent(listingId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exactAddress })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "地址沒存成功");
+      setRows((current) =>
+        current.map((row) =>
+          row.listingId === listingId
+            ? { ...row, listing: { ...row.listing, exactAddress: exactAddress.trim() || null } }
+            : row
+        )
+      );
+      setMessage(exactAddress.trim() ? "正確地址已存，導航會改用這個。" : "已清掉正確地址。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "地址沒存成功");
+    }
+  }
+
+  /** 切換「買方自己勾」與「直接給帶看卡」。 */
+  async function switchMode(next: TourMode) {
+    setBusy("mode");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: next })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "切換失敗");
+      setMode(next);
+      setMessage(
+        next === "direct"
+          ? "已切成帶看卡：買方打開連結直接看到你排好的清單，不會再出現「想看／略過」。"
+          : "已切回買方勾選：買方可以自己挑想看哪幾間。"
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "切換失敗");
     } finally {
       setBusy("");
     }
@@ -217,6 +272,33 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
         </p>
       )}
 
+      {/* 模式決定買方點開連結看到什麼，所以放在連結正上方。 */}
+      <div className="mode-row">
+        <span className="mode-label">買方打開連結會看到：</span>
+        <button
+          type="button"
+          data-on={mode === "pick"}
+          onClick={() => switchMode("pick")}
+          disabled={busy === "mode"}
+        >
+          讓他自己勾想看哪幾間
+        </button>
+        <button
+          type="button"
+          data-on={mode === "direct"}
+          onClick={() => switchMode("direct")}
+          disabled={busy === "mode"}
+        >
+          直接給帶看卡（已經談好了）
+        </button>
+      </div>
+      {mode === "direct" && (
+        <p className="mode-hint">
+          帶看卡模式：買方看到的是你排好的清單，沒有「想看／略過」按鈕，也不用送出。
+          他還是可以選帶看時間。
+        </p>
+      )}
+
       <div className="tour-link-row">
         <code>{buyerTourUrl(token)}</code>
         <button type="button" onClick={copyLink}>
@@ -342,6 +424,20 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
                     不要讓人以為這間連導航都按不出來。 */}
                 {entry.listing.lat === null && <span className="tag tag-warn">無座標·排順序時略過</span>}
               </p>
+
+              <label className="tour-item-note">
+                正確地址（買方導航會用這個）
+                <input
+                  defaultValue={entry.listing.exactAddress ?? ""}
+                  maxLength={200}
+                  onBlur={(event) => saveExactAddress(entry.listingId, event.target.value)}
+                  placeholder={
+                    entry.listing.address
+                      ? `目前只到「${entry.listing.address}」，補門牌會更準`
+                      : "例：永康區東橋七路123號"
+                  }
+                />
+              </label>
 
               <label className="tour-item-note">
                 我的備註（買方看不到）

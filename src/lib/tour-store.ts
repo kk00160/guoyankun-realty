@@ -239,6 +239,7 @@ export type ListingInput = {
   title: string;
   district?: string | null;
   address?: string | null;
+  exactAddress?: string | null;
   lat?: number | null;
   lng?: number | null;
   totalPrice?: number | null;
@@ -340,6 +341,7 @@ export async function patchListing(id: string, input: Partial<ListingInput>) {
   if (input.title !== undefined) patch.title = input.title;
   if (input.district !== undefined) patch.district = input.district;
   if (input.address !== undefined) patch.address = input.address;
+  if (input.exactAddress !== undefined) patch.exact_address = input.exactAddress;
   if (input.lat !== undefined) patch.lat = input.lat;
   if (input.lng !== undefined) patch.lng = input.lng;
   if (input.layout !== undefined) patch.layout = input.layout;
@@ -466,6 +468,7 @@ export async function patchTour(
     title?: string;
     buyerName?: string | null;
     status?: Tour["status"];
+    mode?: Tour["mode"];
     originLabel?: string | null;
     originLat?: number | null;
     originLng?: number | null;
@@ -477,6 +480,7 @@ export async function patchTour(
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.buyerName !== undefined) row.buyer_name = patch.buyerName;
   if (patch.status !== undefined) row.status = patch.status;
+  if (patch.mode !== undefined) row.mode = patch.mode;
   if (patch.originLabel !== undefined) row.origin_label = patch.originLabel;
   if (patch.originLat !== undefined) row.origin_lat = patch.originLat;
   if (patch.originLng !== undefined) row.origin_lng = patch.originLng;

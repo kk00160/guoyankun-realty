@@ -38,6 +38,14 @@ export type Listing = {
   title: string;
   district: string | null;
   address: string | null;
+  /**
+   * 你手動補的正確門牌。
+   *
+   * 匯入回來的 address 只到路或巷（原始刊登本來就不給門牌），
+   * 這一欄是讓你把實際知道的門牌補進來，導航才會帶到門口而不是巷口。
+   * 刻意跟 address 分開存：蓋掉原始值之後，就再也分不出哪些是你確認過的。
+   */
+  exactAddress: string | null;
   lat: number | null;
   lng: number | null;
   totalPrice: number | null;
@@ -81,6 +89,7 @@ export function toListing(row: Record<string, unknown>): Listing {
     title: String(row.title ?? ""),
     district: str(row.district),
     address: str(row.address),
+    exactAddress: str(row.exact_address),
     lat: num(row.lat),
     lng: num(row.lng),
     totalPrice: num(row.total_price),

@@ -311,6 +311,14 @@ export type TourWithCount = Tour & {
   itemCount: number;
   interestedCount: number;
   pendingCount: number;
+  /**
+   * 只有封面照的物件數。
+   *
+   * 批次匯入走清單 API，一次只帶回一張封面；完整相簿要一筆一筆開明細頁補（npm run fill）。
+   * 這個數字要顯示在有「複製連結」按鈕的地方 ——
+   * 否則整份只有一張照片的清單會直接傳到買方手機上，而畫面上完全沒有任何提示。
+   */
+  thinCount: number;
 };
 
 export async function listTours(): Promise<TourWithCount[]> {
@@ -330,7 +338,7 @@ export async function listTours(): Promise<TourWithCount[]> {
     () =>
       db()
       .from("tour_items")
-      .select("tour_id, buyer_choice")
+      .select("tour_id, listing_id, buyer_choice")
       .in(
         "tour_id",
         tours.map((tour) => tour.id)
@@ -338,13 +346,28 @@ export async function listTours(): Promise<TourWithCount[]> {
     "讀取帶看物件"
   );
 
+  // 只撈 id + images 來數「照片幾張」。一次撈完再在 JS 裡對，
+  // 比每張帶看單各發一次查詢便宜得多。
+  const listingIds = [...new Set(items.map((item) => item.listing_id))];
+  const photoCount = new Map<string, number>();
+  if (listingIds.length > 0) {
+    const listings = await readList(
+      () => db().from("listings").select("id, images").in("id", listingIds),
+      "讀取物件照片數"
+    );
+    for (const row of listings) {
+      photoCount.set(String(row.id), Array.isArray(row.images) ? row.images.length : 0);
+    }
+  }
+
   return tours.map((tour) => {
     const own = items.filter((item) => item.tour_id === tour.id);
     return {
       ...tour,
       itemCount: own.length,
       interestedCount: own.filter((item) => item.buyer_choice === "interested").length,
-      pendingCount: own.filter((item) => item.buyer_choice === "pending").length
+      pendingCount: own.filter((item) => item.buyer_choice === "pending").length,
+      thinCount: own.filter((item) => (photoCount.get(item.listing_id) ?? 0) <= 1).length
     };
   });
 }

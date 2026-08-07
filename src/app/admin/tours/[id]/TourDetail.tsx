@@ -36,6 +36,8 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
   const rejected = rows.filter((row) => row.buyerChoice === "rejected").length;
   const pending = rows.filter((row) => row.buyerChoice === "pending").length;
   const picked = slots.filter((slot) => slot.picked);
+  /** 只有封面照的物件。全庫有 98.7% 是這樣，補過的才會有完整相簿。 */
+  const thin = rows.filter((row) => (row.listing.images?.length ?? 0) <= 1);
 
   async function planRoute(scope: "interested" | "remaining") {
     setBusy("route");
@@ -200,6 +202,18 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
       {!isTourOpen(tour) && (
         <p className="alert-bar" role="alert">
           這筆帶看紀錄目前是關閉的（{formatTourDate(tour.expiresAt)} 到期），買方點連結會看到說明頁。
+        </p>
+      )}
+
+      {/* 「照片只有封面」這件事一定要在複製連結之前講。
+          批次匯入走的是清單 API，一次只帶回一張封面照；完整相簿要一筆一筆開明細頁補。
+          實際發生過：整份連結傳給買方之後才發現每間房子都只有一張照片，
+          而畫面上完全沒有任何提示，只有買方看得到那個結果。 */}
+      {thin.length > 0 && (
+        <p className="alert-bar" role="alert">
+          <b>這 {thin.length} 間只有封面照，買方看不到內裝。</b>
+          　在專案目錄跑 <code>npm run fill</code> 補齊（一筆約 5 秒，這批大約 {Math.ceil((thin.length * 5) / 60)} 分鐘），
+          補完重新整理這一頁再把連結傳出去。
         </p>
       )}
 

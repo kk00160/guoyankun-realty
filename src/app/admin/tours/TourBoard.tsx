@@ -29,7 +29,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
       if (!response.ok) throw new Error(payload.error || "建立失敗");
 
       setTours((current) => [
-        { ...payload.tour, itemCount: 0, interestedCount: 0, pendingCount: 0 },
+        { ...payload.tour, itemCount: 0, interestedCount: 0, pendingCount: 0, thinCount: 0 },
         ...current
       ]);
       form.reset();
@@ -151,6 +151,10 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
                   </p>
                 </div>
                 <div className="tag-row">
+                  {/* 照片沒補齊要在「複製連結」旁邊就看得到，不能等傳出去才發現。 */}
+                  {tour.thinCount > 0 && (
+                    <span className="tag tag-warn">{tour.thinCount} 間只有封面照</span>
+                  )}
                   {tour.submittedAt && <span className="tag tag-done">買方已送出</span>}
                   <span className="tag">{TOUR_STATUS_LABEL[tour.status]}</span>
                   <span className="tag">{open ? `${formatTourDate(tour.expiresAt)} 到期` : "已關閉"}</span>

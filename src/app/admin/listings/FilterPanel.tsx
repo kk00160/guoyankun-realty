@@ -194,7 +194,7 @@ export default function FilterPanel({ query, defaultOpen }: { query: ListingQuer
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && search()}
-                placeholder="物件名稱或路名，例：崇明路"
+                placeholder="地址、路名、建案名都可以，例：永康區東橋七路"
                 maxLength={60}
               />
             </div>

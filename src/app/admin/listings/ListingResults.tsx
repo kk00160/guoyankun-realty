@@ -13,7 +13,7 @@ import {
   resizeImage
 } from "@/lib/listings";
 import { buyerTourUrl, isLocalPreview, localTourUrl } from "@/lib/buyer-link";
-import { type ListingQuery, buildListingHref, describeQuery } from "@/lib/listing-filters";
+import { type ListingQuery, buildListingHref, describeQuery, explainKeyword } from "@/lib/listing-filters";
 import type { ListingPage } from "@/lib/tour-store";
 import ListingDetail from "./ListingDetail";
 
@@ -167,6 +167,9 @@ export default function ListingResults({
           <span className="result-count">
             {result.total > 0 ? `　共 ${result.total} 筆，顯示 ${from}–${to}` : "　沒有符合的物件"}
           </span>
+          {/* 關鍵字會被拆成「行政區 + 幾個詞」，所以要把拆的結果講出來。
+              系統偷偷改寫你的輸入卻不說，搜出奇怪的結果時你會查不出原因。 */}
+          {query.keyword && <p className="result-explain">你打的「{query.keyword}」我讀成：{explainKeyword(query.keyword)}</p>}
         </div>
       </div>
 
@@ -174,7 +177,9 @@ export default function ListingResults({
 
       {result.total === 0 && (
         <p className="empty-note">
-          這組條件沒有找到物件。把條件放寬一點，或先跑一次匯入把更多案源抓進來。
+          這組條件沒有找到物件。
+          {query.keyword && "關鍵字的每個詞都要同時命中，少打一兩個詞通常就有了。"}
+          也可以把價格或坪數放寬一點。
         </p>
       )}
 
@@ -233,7 +238,10 @@ export default function ListingResults({
               {listing.district && <span className="tag">{listing.district}</span>}
               {listing.houseType && <span className="tag">{listing.houseType}</span>}
               {listing.floorInfo && <span className="tag">{listing.floorInfo}</span>}
-              {listing.lat === null && <span className="tag tag-warn">缺座標，排不了路線</span>}
+              {/* 全庫 98.7% 都沒有座標（座標要開明細頁一筆一筆補），
+                  所以這個標籤用中性樣式而不是紅色警告 —— 紅到處都是等於沒有警告。
+                  而且它只影響「排行車順序」，導航靠社區名／地址一樣按得出來。 */}
+              {listing.lat === null && <span className="tag">無座標·排順序時略過</span>}
             </div>
 
             {listing.status === "needs_review" && (

@@ -1365,6 +1365,14 @@ a {
   color: #7d8fab;
 }
 
+/* 關鍵字被系統怎麼拆的，顯示在結果數量下面。 */
+.result-explain {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #9fb0c7;
+  line-height: 1.7;
+}
+
 /* 蜜罐欄位。不能用 display:none —— 有些機器人會跳過看不見的欄位，
    要的是「人看不到、但在 DOM 裡是正常欄位」。 */
 .lead-trap {

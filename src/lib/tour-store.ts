@@ -5,7 +5,8 @@ import {
   PAGE_SIZE,
   PING_BANDS,
   PRICE_BANDS,
-  bandRange
+  bandRange,
+  parseKeyword
 } from "@/lib/listing-filters";
 import type { ListingUpdate, TourUpdate } from "@/lib/db-schema";
 import {
@@ -118,7 +119,14 @@ export async function listListings(query: ListingQuery): Promise<ListingPage> {
     if (query.status === "all") q = q.in("status", ["active", "needs_review"]);
     else q = q.eq("status", query.status);
 
-    if (query.districts.length) q = q.in("district", query.districts);
+    /**
+     * 行政區條件 = 勾選的 ∪ 從關鍵字裡認出來的。
+     * 打「永康區東橋七路」的時候，「永康區」要當成行政區條件，
+     * 不能整串丟去比對 address（那樣永遠 0 筆，見 parseKeyword 的說明）。
+     */
+    const parsed = parseKeyword(query.keyword);
+    const districts = [...new Set([...query.districts, ...parsed.districts])];
+    if (districts.length) q = q.in("district", districts);
     if (query.houseTypes.length) q = q.in("house_type", query.houseTypes);
 
     // 自訂售價優先，填了就蓋過級距。
@@ -138,10 +146,30 @@ export async function listListings(query: ListingQuery): Promise<ListingPage> {
       q = q.or(prefixes.map((n) => `layout.like.${n}房%`).join(","));
     }
 
-    if (query.keyword) {
-      // 逗號與括號是 PostgREST 的 or() 語法字元，先清掉避免查詢被拆壞。
-      const safe = query.keyword.replace(/[%,()]/g, "");
-      if (safe) q = q.or(`title.ilike.%${safe}%,address.ilike.%${safe}%`);
+    /**
+     * 關鍵字：每個詞都要命中（AND），每個詞可以命中四個欄位其中之一（OR）。
+     *
+     * 為什麼是四個欄位：以前只比對 title 與 address，社區名完全搜不到 ——
+     * 實測 300 筆有社區名的物件裡，有 189 筆的社區名根本沒出現在標題裡，
+     * 等於打「上東城」也找不到上東城。社區名存在 raw 這個 jsonb 裡，
+     * 用 raw->>community_name 就查得到（已實測可行）。
+     *
+     * 為什麼多個詞要 AND：打「東橋 三房」以前會被當成一整串字比對，結果 0 筆。
+     * 分開之後才是「東橋」而且「三房」。
+     * PostgREST 的多次 .or() 之間本來就是 AND，剛好是我們要的。
+     */
+    for (const term of parsed.terms) {
+      // 逗號、括號、百分比是 PostgREST or() 的語法字元，先清掉避免查詢被拆壞。
+      const safe = term.replace(/[%,()]/g, "");
+      if (!safe) continue;
+      q = q.or(
+        [
+          `title.ilike.%${safe}%`,
+          `address.ilike.%${safe}%`,
+          `district.ilike.%${safe}%`,
+          `raw->>community_name.ilike.%${safe}%`
+        ].join(",")
+      );
     }
 
     return q;

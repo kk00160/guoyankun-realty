@@ -51,11 +51,31 @@ function readList<T>(
   return readWithRetry<T[]>(run, what);
 }
 
+/**
+ * 讀單筆。查不到要回 null，不能回空陣列。
+ *
+ * ⚠️ 這裡把結果包進 { value } 是必要的，不是多此一舉。
+ *
+ * readWithRetry 內部寫的是 `return (data ?? []) as T` —— 那是為了「讀清單」設計的，
+ * 查不到就給空陣列很合理。但單筆查詢查不到時 data 也是 null，
+ * 同一行就會回傳 `[]`，而 `[]` 是 truthy。
+ *
+ * 實際造成的災難（2026-08-07）：買方拿一條已經被刪掉的連結進來，
+ * getTourByToken 收到 `[]` 當成「有這筆」，toTour([]) 生出一個 id 是 "undefined" 的空殼，
+ * 再拿它去查物件時 Postgres 噴 uuid 格式錯 —— 買方看到的是
+ * 「系統暫時連不上，請稍後再開一次」，於是他會一直重試一條永遠不會活過來的連結。
+ * 正確的訊息應該是「這個連結無效」。
+ *
+ * 包一層物件之後 data 永遠不是 null，那行 `?? []` 就碰不到我們的值。
+ */
 function readOne<T>(
   run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
   what: string
-) {
-  return readWithRetry<T | null>(() => run() as never, what) as Promise<T | null>;
+): Promise<T | null> {
+  return readWithRetry<{ value: T | null }>(
+    () => Promise.resolve(run()).then(({ data, error }) => ({ data: { value: data }, error })),
+    what
+  ).then((wrapped) => wrapped.value);
 }
 
 /**

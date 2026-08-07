@@ -11,7 +11,14 @@ import {
   formatUnitPrice
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
-import { type RoutePoint, googleMapsUrls, routeLegs, routeSummary } from "@/lib/route";
+import {
+  type RoutePoint,
+  googleMapsUrls,
+  mapDirectionsUrl,
+  mapTarget,
+  routeLegs,
+  routeSummary
+} from "@/lib/route";
 import { getTour, listTourEntries } from "@/lib/tour-store";
 import PrintButton from "./PrintButton";
 
@@ -50,7 +57,9 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
       id: entry.listingId,
       label: entry.listing.title,
       lat: entry.listing.lat as number,
-      lng: entry.listing.lng as number
+      lng: entry.listing.lng as number,
+      // 順序用座標算，導航連結用社區名／地址（大樓的座標常落在屋頂）。
+      query: mapTarget(entry.listing)?.query
     }));
 
   const legs = routeLegs(points, origin);
@@ -115,6 +124,7 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
 
         {picked.map((entry, index) => {
           const leg = legFor(entry.listingId);
+          const place = mapTarget(entry.listing);
           return (
             <section key={entry.id} className="report-item">
               <div className="report-item-head">
@@ -169,9 +179,26 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
                 </p>
               )}
 
+              {/* 每一站自己的導航。列印時不需要（紙上的連結按不了），所以標 no-print。
+                  這條在「沒有座標」的物件上一樣按得出來 —— 導航靠的是社區名或地址，
+                  不是座標。實際上絕大多數物件都沒有座標，這條才是你出門真正會按的按鈕。 */}
+              {place && (
+                <p className="report-nav no-print">
+                  <a className="button-secondary" href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer">
+                    導航到這一站
+                  </a>
+                  <span>{place.hint}</span>
+                </p>
+              )}
+
               {entry.agentNote && <p className="report-note">備註：{entry.agentNote}</p>}
               {!canRoute(entry.listing) && (
-                <p className="report-note">這間沒有座標，沒有排進導航路線，出發前記得自己確認位置。</p>
+                <p className="report-note">
+                  這間沒有座標，所以沒有排進上面的行車順序與里程推估。單站導航不受影響。
+                </p>
+              )}
+              {!place && (
+                <p className="report-note">這間連地址跟社區名都沒有，導航按不出來，出發前要自己確認位置。</p>
               )}
             </section>
           );

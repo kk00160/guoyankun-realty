@@ -11,7 +11,7 @@ import {
   publicRatio,
   resizeImage
 } from "@/lib/listings";
-import { googleMapsPlaceUrl } from "@/lib/route";
+import { googleMapsPlaceUrl, mapPlaceUrl, mapTarget } from "@/lib/route";
 
 /**
  * 物件詳細資料，蓋在搜尋結果上面。
@@ -45,6 +45,7 @@ export default function ListingDetail({
   }, [onClose, photos.length]);
 
   const ratio = publicRatio(listing);
+  const place = mapTarget(listing);
 
   // 一眼要看到的四個數字，放在標題底下，不用捲動。
   const highlights: [string, string][] = [
@@ -206,6 +207,13 @@ export default function ListingDetail({
                   看原始刊登
                 </a>
               )}
+              {/* 主要地圖連結走社區名／地址（見 mapTarget）。
+                  有座標時另外給一顆純座標的，兩顆對不起來就是資料有問題，值得看一眼。 */}
+              {place && (
+                <a className="button-secondary" href={mapPlaceUrl(place)} target="_blank" rel="noreferrer">
+                  {place.kind === "community" ? "看社區位置" : "看地圖"}
+                </a>
+              )}
               {listing.lat !== null && listing.lng !== null && (
                 <a
                   className="button-secondary"
@@ -213,7 +221,7 @@ export default function ListingDetail({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  看地圖
+                  核對座標
                 </a>
               )}
             </div>

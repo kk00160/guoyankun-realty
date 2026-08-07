@@ -13,6 +13,15 @@ export type RoutePoint = {
   label: string;
   lat: number;
   lng: number;
+  /**
+   * 導航時要交給 Google Maps 的地點名稱（社區名或地址），見 mapTarget()。
+   *
+   * 排順序一律用 lat/lng 算，不用這個 —— 那是數字，不會被文字比對搞錯。
+   * 但真的要開車過去時用名稱比較準：大樓的座標常常落在屋頂或社區中心，
+   * 而 Google Maps 認得建案名稱，會把你帶到真正的大門口。
+   * 沒給就退回用座標。
+   */
+  query?: string;
 };
 
 /** 市區平均車速（km/h），用來把距離換算成「大概要開多久」。 */
@@ -166,8 +175,14 @@ export function routeSummary(ordered: RoutePoint[], origin?: RoutePoint) {
   };
 }
 
-function coord(point: RoutePoint) {
-  return `${point.lat},${point.lng}`;
+/**
+ * 一個停靠點在導航連結裡怎麼寫。
+ * 有地點名稱就用名稱（比較準，見 RoutePoint.query），沒有才退回座標。
+ * `|` 是 waypoints 的分隔字元，出現在名稱裡會把整串切壞，先清掉。
+ */
+function navTarget(point: RoutePoint) {
+  const query = point.query?.replace(/\|/g, " ").trim();
+  return query || `${point.lat},${point.lng}`;
 }
 
 /**
@@ -193,14 +208,14 @@ export function googleMapsUrls(ordered: RoutePoint[], origin?: RoutePoint): stri
 
     const params = new URLSearchParams({
       api: "1",
-      origin: coord(segment[0]),
-      destination: coord(segment[segment.length - 1]),
+      origin: navTarget(segment[0]),
+      destination: navTarget(segment[segment.length - 1]),
       travelmode: "driving"
     });
 
     const waypoints = segment.slice(1, -1);
     if (waypoints.length > 0) {
-      params.set("waypoints", waypoints.map(coord).join("|"));
+      params.set("waypoints", waypoints.map(navTarget).join("|"));
     }
 
     urls.push(`https://www.google.com/maps/dir/?${params.toString()}`);
@@ -209,7 +224,108 @@ export function googleMapsUrls(ordered: RoutePoint[], origin?: RoutePoint): stri
   return urls;
 }
 
-/** 單一物件的地圖連結，買方頁上「看地圖」用。 */
+/** 純座標的地圖連結。只在「想自己核對那個點到底落在哪」的時候用，見 mapTarget()。 */
 export function googleMapsPlaceUrl(point: { lat: number; lng: number }) {
   return `https://www.google.com/maps/search/?api=1&query=${point.lat},${point.lng}`;
+}
+
+// ---------------------------------------------------------------
+// 導航目標：用「地方的名字」導航，不是只丟一個座標點
+// ---------------------------------------------------------------
+
+/**
+ * 為什麼不直接用經緯度導航：
+ *
+ * 一、資料裡幾乎沒有座標。實測 1,000 筆台南案源：有地址的 100%、
+ *     有社區名的 72%（電梯大樓 98%），有經緯度的只有 1.3%。
+ *     座標要一筆一筆開明細頁才拿得到，全部補完是十幾個小時的事。
+ *     只認座標，等於九成九的物件根本按不出導航。
+ *
+ * 二、就算有座標也不見得比較好。大樓的座標常落在屋頂或社區中心，
+ *     而 Google Maps 認得「白金漢宮」這種建案名稱，會帶你到真正的大門口。
+ *
+ * 所以優先序是：社區名 → 地址 → 座標。
+ *
+ * ⚠️ 每個查詢字串都硬性加上「台南市＋行政區」前綴，這是防呆不是裝飾：
+ * 純文字搜尋最可怕的失敗不是搜不到，是安靜地搜到別的縣市的同名建案。
+ * 加了前綴之後，最差的結果是落在正確的行政區裡，不會把人載到彰化。
+ */
+export type MapTargetKind = "community" | "address" | "coords";
+
+export type MapTarget = {
+  kind: MapTargetKind;
+  /** 丟給 Google Maps 的字串：社區名／地址，或 "lat,lng" */
+  query: string;
+  /** 給人看的一句話，讓你知道這條連結會把你帶到多精準的地方 */
+  hint: string;
+};
+
+/** mapTarget() 需要的欄位。刻意不收整個 Listing，這支才能被匯入腳本共用。 */
+export type Locatable = {
+  district: string | null;
+  address: string | null;
+  communityName: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+const CITY = "台南市";
+
+/** 補上「台南市＋行政區」前綴，但不製造「台南市台南市東區東區」這種疊字。 */
+function localise(district: string | null, text: string) {
+  if (text.includes(CITY)) return text;
+  const area = district && !text.includes(district) ? district : "";
+  return `${CITY}${area}${text}`;
+}
+
+/** 這筆物件要怎麼導航。全部資訊都缺才會回 null。 */
+export function mapTarget(listing: Locatable): MapTarget | null {
+  const community = listing.communityName?.trim();
+  const address = listing.address?.trim();
+
+  // 一、有社區名（多半是電梯大樓、華廈）：Google Maps 認得建案，直接帶到大門口。
+  //
+  //     提示裡一定要把地址一起帶出來。實測「台南市善化區宇成植村NY」，
+  //     Google 會回兩筆同名建案（陽光大道591號 / 目加溜灣大道535號），
+  //     它自己挑了對的那筆，但這是排序結果，不是保證。
+  //     所以按鈕旁邊永遠寫著該有的路名 —— 導航開起來對不上，你當場就看得出來。
+  if (community) {
+    return {
+      kind: "community",
+      query: localise(listing.district, community),
+      hint: address ? `導航到「${community}」，地址應該在${address}` : `導航到「${community}」`
+    };
+  }
+
+  // 二、沒社區名（多半是透天、公寓）：用地址。
+  //     來源的地址通常只到路或巷、沒有門牌 —— 那正好就是「附近」，
+  //     導到巷口再自己認門牌，本來就是帶看的實際做法，不用假裝更精準。
+  if (address) {
+    return {
+      kind: "address",
+      query: localise(listing.district, address),
+      hint: `導航到${address}附近（無門牌，到巷口再認）`
+    };
+  }
+
+  // 三、名字跟地址都沒有，才輪到座標。
+  if (listing.lat !== null && listing.lng !== null) {
+    return {
+      kind: "coords",
+      query: `${listing.lat},${listing.lng}`,
+      hint: "只有座標，導航點可能落在屋頂或路中間"
+    };
+  }
+
+  return null;
+}
+
+/** 單一目標的 Google Maps 連結（搜尋模式，手機點開直接進 App）。 */
+export function mapPlaceUrl(target: MapTarget) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target.query)}`;
+}
+
+/** 單一目標的「直接開始導航」連結。帶看當下最常按的就是這顆。 */
+export function mapDirectionsUrl(target: MapTarget) {
+  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${encodeURIComponent(target.query)}`;
 }

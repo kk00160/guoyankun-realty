@@ -1,6 +1,6 @@
 import { bad, fail, ok, readJson } from "@/lib/api";
 import { canRoute } from "@/lib/listings";
-import { type RoutePoint, googleMapsUrls, orderRoute, routeSummary } from "@/lib/route";
+import { type RoutePoint, googleMapsUrls, mapTarget, orderRoute, routeSummary } from "@/lib/route";
 import { getTour, listTourEntries, saveVisitOrder } from "@/lib/tour-store";
 
 export const runtime = "nodejs";
@@ -44,11 +44,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         id: entry.listingId,
         label: entry.listing.title,
         lat: entry.listing.lat as number,
-        lng: entry.listing.lng as number
+        lng: entry.listing.lng as number,
+        // 順序用座標算，但導航連結用社區名／地址 —— 大樓的座標常落在屋頂。
+        query: mapTarget(entry.listing)?.query
       }));
 
     if (points.length === 0) {
-      return bad("這些物件都還沒有經緯度，排不了路線。請先在案源庫補上地址座標。");
+      return bad(
+        "這些物件都還沒有經緯度，排不出行車順序。在專案目錄跑 `npm run fill` 補一下（一筆約 5 秒）再回來排。" +
+          "單間導航不受影響，帶看單上每一間都還是按得出來。"
+      );
     }
 
     const origin: RoutePoint | undefined =

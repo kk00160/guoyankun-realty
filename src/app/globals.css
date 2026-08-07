@@ -2476,6 +2476,25 @@ a {
   padding-left: 12px;
 }
 
+/* 每一站自己的導航按鈕。列印時整塊隱藏（見 .no-print），所以只管螢幕上好不好按。 */
+.report-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+}
+
+.report-nav .button-secondary {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.report-nav span {
+  font-size: 13px;
+  color: #5b5266;
+}
+
 .report-foot {
   border-top: 1px solid var(--line);
   padding-top: 14px;

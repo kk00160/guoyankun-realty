@@ -12,7 +12,7 @@ import {
   resizeImage
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
-import { googleMapsPlaceUrl } from "@/lib/route";
+import { mapPlaceUrl, mapTarget } from "@/lib/route";
 import type { BuyerChoice } from "@/lib/tour";
 
 type Entry = {
@@ -87,7 +87,6 @@ export default function BuyerPicker({
   const [submitted, setSubmitted] = useState(Boolean(submittedAt));
 
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
-  const decided = useMemo(() => rows.filter((row) => row.choice !== "pending").length, [rows]);
 
   async function choose(listingId: string, choice: BuyerChoice) {
     const previous = rows;
@@ -181,19 +180,21 @@ export default function BuyerPicker({
           <div className="buyer-done">
             <b>已經送出了，謝謝你 🙌</b>
             <p>
-              你選了 {interested.length} 間想看的，我這邊收到了，會盡快跟你聯絡安排時間。
+              {interested.length > 0
+                ? `你挑了 ${interested.length} 間想看的，我收到了，會盡快跟你聯絡安排時間。`
+                : "這次沒有特別想看的也沒關係，我知道了，再幫你留意更合適的。"}
               還想調整的話，直接改下面的選擇再送出一次就好。
             </p>
           </div>
         ) : (
+          /* 這份清單是阿坤挑過才送出來的，所以這裡不催進度、不要求「全部選完」。
+             想全看、只挑一兩間、或一間都不挑，都是正常答案。 */
           <p>
-            {name ? `${name}，` : ""}共 {rows.length} 間。點卡片可以看更多照片和詳細資料，
-            想看的按「想看」，全部挑完後按最下面的送出。
+            {name ? `${name}，` : ""}這裡有 {rows.length} 間。點卡片可以看更多照片和詳細資料，
+            想看的按「想看」—— 要幾間就幾間，全部都想看也可以。挑好按最下面送出就行。
           </p>
         )}
-        <div className="buyer-progress">
-          已選 {decided} / {rows.length}　·　想看 {interested.length} 間
-        </div>
+        {interested.length > 0 && <div className="buyer-progress">已挑了 {interested.length} 間</div>}
       </header>
 
       {message && <p className="form-message">{message}</p>}
@@ -202,6 +203,9 @@ export default function BuyerPicker({
         {rows.map((entry) => {
           const listing = entry.listing;
           const ratio = publicRatio(listing);
+          // 有社區名就用社區名找，沒有就用地址找。幾乎沒有物件有經緯度，
+          // 舊版只認經緯度，等於九成九的房子看不到「看地圖」。
+          const place = mapTarget(listing);
 
           return (
             <article key={entry.listingId} className="buyer-card" data-choice={entry.choice}>
@@ -282,14 +286,10 @@ export default function BuyerPicker({
                     日期不能拿掉：買方拿一個月前的價格來談，責任會落在阿坤身上。 */}
                 <p className="buyer-source">
                   資料更新於 {formatSeenAt(listing.lastSeenAt)}　·　實際屋況與價格以現場為準
-                  {listing.lat !== null && listing.lng !== null && (
+                  {place && (
                     <>
                       　·{" "}
-                      <a
-                        href={googleMapsPlaceUrl({ lat: listing.lat, lng: listing.lng })}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <a href={mapPlaceUrl(place)} target="_blank" rel="noreferrer">
                         看地圖
                       </a>
                     </>
@@ -339,10 +339,9 @@ export default function BuyerPicker({
       {rows.length > 0 && (
         <div className="buyer-submit-bar">
           <div>
-            <b>想看 {interested.length} 間</b>
-            <span>
-              {decided < rows.length ? `　還有 ${rows.length - decided} 間沒選` : "　全部選完了"}
-            </span>
+            <b>{interested.length > 0 ? `想看 ${interested.length} 間` : "還沒挑"}</b>
+            {/* 刻意不顯示「還有幾間沒選」。沒按到的不是待辦事項，就只是沒興趣而已。 */}
+            <span>　挑幾間都可以</span>
           </div>
           <button type="button" className="button" onClick={submit} disabled={busy === "submit"}>
             {busy === "submit" ? "送出中…" : submitted ? "重新送出" : "送出給" + PROFILE.alias}

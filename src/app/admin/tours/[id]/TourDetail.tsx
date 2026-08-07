@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { buyerTourUrl } from "@/lib/buyer-link";
 import { formatPing, formatPrice, formatSeenAt, formatUnitPrice } from "@/lib/listings";
+import { mapDirectionsUrl, mapTarget } from "@/lib/route";
 import { BUYER_CHOICE_LABEL, type Tour, formatTourDate, isTourOpen } from "@/lib/tour";
 import type { TourEntry } from "@/lib/tour-store";
 
@@ -192,15 +193,17 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
           ))}
           {route.missingCoords.length > 0 && (
             <p className="alert-bar">
-              這 {route.missingCoords.length} 間沒有經緯度，排不進路線：{route.missingCoords.join("、")}。
-              到案源庫補上座標就會納入。
+              這 {route.missingCoords.length} 間沒有經緯度，排不進行車順序：{route.missingCoords.join("、")}。
+              跑 <code>npm run fill</code> 補座標就會納入。單間導航不受影響，下面每一間都還是按得出來。
             </p>
           )}
         </section>
       )}
 
       <div className="tour-item-list">
-        {rows.map((entry) => (
+        {rows.map((entry) => {
+          const place = mapTarget(entry.listing);
+          return (
           <article key={entry.id} className="tour-item" data-choice={entry.buyerChoice}>
             <div className="tour-item-order">{entry.visitOrder ?? "—"}</div>
 
@@ -212,7 +215,9 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
               </p>
               <p className="tour-item-meta">
                 {entry.listing.district ?? "—"}　{entry.listing.address ?? ""}
-                {entry.listing.lat === null && <span className="tag tag-warn">缺座標</span>}
+                {/* 幾乎每一筆都沒有座標，所以這個標籤要講清楚它只影響「排順序」，
+                    不要讓人以為這間連導航都按不出來。 */}
+                {entry.listing.lat === null && <span className="tag tag-warn">無座標·排順序時略過</span>}
               </p>
 
               <label className="tour-item-note">
@@ -232,6 +237,11 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
               </span>
               <span className="listing-seen">更新於 {formatSeenAt(entry.listing.lastSeenAt)}</span>
               <div className="listing-actions">
+                {place && (
+                  <a href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer" title={place.hint}>
+                    導航
+                  </a>
+                )}
                 {entry.listing.sourceUrl && (
                   <a href={entry.listing.sourceUrl} target="_blank" rel="noreferrer">
                     原始刊登
@@ -243,7 +253,8 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
               </div>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
 
       {rows.length === 0 && (

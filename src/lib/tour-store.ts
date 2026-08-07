@@ -68,8 +68,27 @@ function readCount(
   what: string
 ) {
   return readWithRetry<number>(
-    () => Promise.resolve(run()).then(({ count, error }) => ({ data: count ?? 0, error })),
+    () => Promise.resolve(run()).then(({ count, error }) => ({ data: normaliseCount(count, what), error })),
     what
+  );
+}
+
+/**
+ * count 查詢回 null 時要當成錯誤，不可以當成 0。
+ *
+ * 實測（2026-08-07）：對一張「不存在的資料表」下 head + count 的查詢，
+ * PostgREST 回的是 HTTP 204、count = null、error = null ——
+ * 跟「表存在但是空的」完全分不出來。
+ *
+ * 寫成 count ?? 0 的話，畫面會很有自信地顯示「累計來客 0 筆」，
+ * 而真相是那張表根本還沒建。這種安靜的錯誤比噴一個錯誤嚴重得多：
+ * 你會以為沒人來過，實際上是資料根本沒在存。
+ */
+function normaliseCount(count: number | null, what: string): number {
+  if (typeof count === "number") return count;
+  throw new Error(
+    `${what}讀不到數量（資料表可能還不存在）。` +
+      "到 Supabase 的 SQL Editor 跑一次 supabase/ 底下的 schema 檔就會好。"
   );
 }
 

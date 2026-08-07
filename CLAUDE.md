@@ -67,6 +67,12 @@
 
 ### 動這個模組之前一定要知道的事
 
+**Supabase 的 count 查詢回 null 一定要當成錯誤，不可以當成 0。**
+實測（2026-08-07）：對一張不存在的資料表下 `select("*", { count: "exact", head: true })`，
+PostgREST 回的是 HTTP 204、`count = null`、`error = null` —— 跟「表存在但是空的」完全分不出來。
+寫成 `count ?? 0` 的話，控台會很有自信地顯示「累計來客 0 筆」，而真相是表根本還沒建。
+`readCount()`（tour-store）與 `countLeads()`（lead-store）都已經擋掉這件事，不要改回去。
+
 **外部來源的資料一律當成不可信。** 對方限速或改版時，回來的可能不是錯誤碼，
 而是看起來正常的錯誤數值。因此有一道「資料合理性閘門」
 （`src/lib/listings.ts` 的 `checkListingSanity`），沒過的標成 `needs_review`，

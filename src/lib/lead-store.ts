@@ -59,14 +59,28 @@ export async function listLeads(status: LeadStatus | "all" = "all"): Promise<Lea
   return rows.map((row) => toLead(row));
 }
 
-/** 控台首頁用。head + count 只問數字不搬資料。 */
+/**
+ * 控台首頁用。head + count 只問數字不搬資料。
+ *
+ * ⚠️ count 回 null 一定要當成錯誤，不可以當成 0。
+ * 實測：對不存在的資料表下這種查詢，PostgREST 回 HTTP 204、count = null、error = null，
+ * 跟「表存在但沒資料」完全分不出來。寫成 count ?? 0 的話，
+ * 控台會很有自信地顯示「累計來客 0 筆」，而真相是表根本還沒建 ——
+ * 你會以為沒人來過，實際上資料根本沒在存。
+ */
 export async function countLeads(status?: LeadStatus): Promise<number> {
   const { count, error } = await (status
     ? db().from("leads").select("*", { count: "exact", head: true }).eq("status", status)
     : db().from("leads").select("*", { count: "exact", head: true }));
 
   if (error) throw leadError("計算來客數量", error.message);
-  return count ?? 0;
+  if (typeof count !== "number") {
+    throw new Error(
+      "資料庫還沒有 leads 這張表。" +
+        "到 Supabase 的 SQL Editor 跑一次 supabase/2026-08-07-times-and-leads.sql 就會好。"
+    );
+  }
+  return count;
 }
 
 export async function patchLead(

@@ -233,7 +233,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
         <div className="slot-head">
           <h2>預約帶看時間</h2>
           <p>
-            開幾個你方便的時段，買方會在他的連結上一起勾。
+            開幾個你方便的時段，買方會在他的連結上一起勾。他也可以自己提一個時間，會標成「買方自己提的」。
             {picked.length > 0 ? (
               <b>　買方勾了 {picked.length} 個。</b>
             ) : slots.length > 0 ? (
@@ -275,7 +275,10 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
             ))}
           </ul>
         ) : (
-          <p className="slot-empty">還沒開時段。沒開的話，買方那邊不會出現選時間這一區。</p>
+          <p className="slot-empty">
+            還沒開時段。就算不開，買方那邊還是可以自己提一個時間 —— 只是你先開幾個，
+            他從裡面挑會更快。
+          </p>
         )}
       </section>
 

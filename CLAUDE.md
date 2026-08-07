@@ -41,6 +41,15 @@
 - 控台首頁的每個數字都各自 try/catch。控台是「進得去別的地方」的那一頁，
   數字讀不到頂多少看幾個數字，不能因此讓整個後台連不進去。
 
+**分頁清單一定要在 server component 算好再用 props 傳下去。** `adminTabs()` 讀的是
+`TOUR_ENABLED` / `BOOKING_ENABLED`，而 Next.js 只把 `NEXT_PUBLIC_` 開頭的變數送進瀏覽器。
+在 client component 裡自己算的話，畫面會先出現正確的分頁，hydration 之後被抹掉只剩「控台」。
+`src/lib/admin-nav.ts` 的 `import "server-only"` 就是在擋這件事。
+
+由此延伸一條驗證規則：**動到 client component 時，只看伺服器吐的 HTML 不算驗過。**
+上面那個 bug 的 SSR HTML 完全正確，錯的是瀏覽器接手之後。要在真的瀏覽器裡看，
+後台又擋密碼，可以用 `scripts/_authproxy.mjs`（本機代理，幫忙補密碼標頭，不進版控）。
+
 ## 買方配案系統（配案 → 買方勾選 → 路線 → 帶看單）
 
 2026-08 新增的第二個模組，跟預約系統各自獨立。

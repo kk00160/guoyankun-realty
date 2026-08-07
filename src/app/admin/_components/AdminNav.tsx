@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type AdminEntry, adminTabs } from "@/lib/admin-nav";
-import { PROFILE } from "@/lib/profile";
+import type { AdminEntry } from "@/lib/admin-nav";
 
 /**
  * 控台導覽列。每一個後台頁面上面都有這排，讓你隨時跳到別的系統。
  *
- * 分頁清單來自 src/lib/admin-nav.ts，不要在這裡寫死 ——
- * 以後多一個系統只改那一份名單，這裡會自己跟上。
+ * ⚠️ 分頁清單一律由 layout（server component）算好用 props 傳進來，
+ *    這支不可以自己去讀環境變數 —— 那些變數在瀏覽器裡是 undefined，
+ *    自己算的話 hydration 之後分頁會整排消失。詳見 src/lib/admin-nav.ts 的註解。
+ *    這裡只留一件需要瀏覽器才知道的事：現在人在哪一頁。
  *
  * 整條列標了 no-print：帶看單列印時不該印出後台導覽。
  */
@@ -18,16 +19,15 @@ function isActive(pathname: string, href: string) {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-export default function AdminNav() {
+export default function AdminNav({ tabs, brand }: { tabs: AdminEntry[]; brand: string }) {
   const pathname = usePathname();
-  const tabs: AdminEntry[] = adminTabs();
 
   return (
     <header className="console-bar no-print">
       <div className="console-bar-top">
         <Link className="console-brand" href="/admin">
           <span className="console-dot" aria-hidden="true" />
-          {PROFILE.name}房仲控台
+          {brand}
         </Link>
         {/* HTTP Basic 沒有真正的登出，這條會讓瀏覽器重新問一次帳密（見 middleware）。 */}
         <a className="console-logout" href="/admin/logout">
@@ -37,9 +37,16 @@ export default function AdminNav() {
 
       <nav className="console-tabs" aria-label="後台系統">
         {tabs.map((tab) => (
-          <Link key={tab.href} href={tab.href} data-on={isActive(pathname, tab.href)}>
-            <span aria-hidden="true">{tab.icon}</span>
-            {tab.label}
+          <Link
+            key={tab.href}
+            href={tab.href}
+            data-on={isActive(pathname, tab.href)}
+            aria-current={isActive(pathname, tab.href) ? "page" : undefined}
+          >
+            <span className="console-tab-icon" aria-hidden="true">
+              {tab.icon}
+            </span>
+            <span>{tab.label}</span>
           </Link>
         ))}
       </nav>

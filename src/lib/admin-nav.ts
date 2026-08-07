@@ -1,4 +1,21 @@
+import "server-only";
 import { BOOKING_ENABLED, TOUR_ENABLED } from "@/lib/feature-flags";
+
+/**
+ * 檔首的 "server-only" 是硬性保險，別拿掉。
+ *
+ * 這支讀 TOUR_ENABLED / BOOKING_ENABLED，而那兩個是伺服器端的環境變數 ——
+ * Next.js 只會把 NEXT_PUBLIC_ 開頭的變數送進瀏覽器，其餘在瀏覽器裡一律是 undefined。
+ *
+ * 實際踩過：導覽列本來是 client component 直接呼叫 adminTabs()，
+ * 伺服器算出四個分頁送到畫面上，瀏覽器接手後兩個開關都變成 false，
+ * 分頁就被抹掉只剩「控台」。而且伺服器吐出來的 HTML 是對的，
+ * 只看 HTML 驗證完全看不出問題。
+ *
+ * 現在改成 server component（layout）算好再用 props 傳給導覽列。
+ * 有人不小心又在 client component import 這支的話，build 會直接失敗，
+ * 而不是安靜地少掉幾個分頁。
+ */
 
 /**
  * 控台的後台系統名單。

@@ -1214,30 +1214,40 @@ a {
   display: none;
 }
 
+/* 每個系統一個圖塊。做得比一般連結大一點，是因為這排在手機上要用拇指點。 */
 .console-tabs a {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 0 0 auto;
-  padding: 9px 15px;
-  border-radius: 10px;
-  font-size: 14px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 700;
   color: #d9e6f5;
   text-decoration: none;
   background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   white-space: nowrap;
 }
 
+.console-tab-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
 .console-tabs a:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
 
-/* 目前所在的分頁反白，跟其他分頁拉開對比，一眼知道自己在哪。 */
+/* 目前所在的圖塊反白，跟其他圖塊拉開對比，一眼知道自己在哪。 */
 .console-tabs a[data-on="true"] {
   background: #fff;
+  border-color: #fff;
   color: var(--navy-950);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
 /* ---------------------------------------------------------------

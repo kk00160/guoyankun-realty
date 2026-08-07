@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Topbar from "@/app/_components/Topbar";
 import DbErrorNotice from "@/app/admin/_components/DbErrorNotice";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
 import { isDbConfigured } from "@/lib/db";
@@ -12,14 +11,13 @@ export const dynamic = "force-dynamic";
 
 // 後台是內部管理頁，不可被搜尋引擎收錄。
 export const metadata: Metadata = {
-  title: "案源庫",
+  title: "買方配案系統",
   robots: { index: false, follow: false }
 };
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-page">
-      <Topbar admin title="案源庫" />
       <div className="admin-shell">{children}</div>
     </div>
   );
@@ -44,12 +42,11 @@ export default async function ListingsPage({
   if (!query.searched) {
     return (
       <div className="admin-page">
-        <Topbar admin title="案源庫" />
         <div className="admin-shell">
           <div className="admin-heading">
             <div>
-              <h1>案源庫</h1>
-              <p>先選條件，按搜尋。挑好的物件加進帶看單，就能產生買方連結。</p>
+              <h1>買方配案系統</h1>
+              <p>先選條件，按搜尋。挑好的物件加進帶看紀錄，就能產生買方連結。</p>
             </div>
           </div>
           <FilterPanel query={query} defaultOpen />
@@ -83,12 +80,11 @@ export default async function ListingsPage({
 
   return (
     <div className="admin-page">
-      <Topbar admin title="案源庫" />
       <div className="admin-shell">
         <div className="admin-heading">
           <div>
-            <h1>案源庫</h1>
-            <p>勾選要給買方看的物件，加進帶看單後就能複製連結。</p>
+            <h1>買方配案系統</h1>
+            <p>勾選要給買方看的物件，產生連結後傳給他，他在手機上自己挑。</p>
           </div>
         </div>
 

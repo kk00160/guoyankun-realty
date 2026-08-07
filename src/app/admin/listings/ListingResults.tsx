@@ -18,7 +18,7 @@ import type { ListingPage } from "@/lib/tour-store";
 import ListingDetail from "./ListingDetail";
 
 /**
- * 搜尋結果 + 勾選加入帶看單。
+ * 搜尋結果 + 勾選加入帶看紀錄。
  *
  * 這一支只負責顯示與勾選；篩選與分頁都在網址上，由伺服器處理。
  */
@@ -37,7 +37,7 @@ export default function ListingResults({
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  // 產好的買方連結留在畫面上，不用再跳到帶看單頁去複製。
+  // 產好的買方連結留在畫面上，不用再跳到帶看日記去複製。
   const [madeLink, setMadeLink] = useState<{
     url: string;
     preview: string;
@@ -95,7 +95,7 @@ export default function ListingResults({
       setMessage(
         skipped.length > 0
           ? `已加入 ${payload.added} 筆。${skipped.length} 筆待確認的沒有加入：${skipped.join("、")}`
-          : `已加入 ${payload.added} 筆。到帶看單複製連結給買方。`
+          : `已加入 ${payload.added} 筆。到帶看日記複製連結給買方。`
       );
       setSelected([]);
     } catch (error) {
@@ -109,8 +109,8 @@ export default function ListingResults({
    * 挑好 → 直接產生買方連結。
    *
    * 原本要先去 /admin/tours 開單、回來勾選、再回去複製連結，三頁跳來跳去；
-   * 沒有帶看單的時候更是直接卡死。這支一次做完，連結當場給你。
-   * 帶看單名稱預設用搜尋條件，之後在帶看單頁還可以改。
+   * 沒有任何帶看紀錄的時候更是直接卡死。這支一次做完，連結當場給你。
+   * 名稱預設用搜尋條件，之後在帶看日記那邊還可以改。
    */
   async function makeLink() {
     if (selected.length === 0) return;
@@ -193,7 +193,7 @@ export default function ListingResults({
                 onChange={() => toggle(listing.id)}
                 disabled={listing.status !== "active"}
               />
-              <span>加入帶看單</span>
+              <span>加入帶看紀錄</span>
             </label>
 
             {/* 整張卡片可點開詳細；勾選框在上面，已用 stopPropagation 隔開。 */}
@@ -314,7 +314,7 @@ export default function ListingResults({
                 「自己先看一次」開的是本機版本，只有你這台電腦看得到。
               </>
             ) : (
-              <>把連結傳給買方就好。他勾完「想看」，你在帶看單那邊會即時看到，接著就能排路線。</>
+              <>把連結傳給買方就好。他勾完「想看」，你在帶看日記那邊會即時看到，接著就能排路線。</>
             )}
           </p>
         </div>

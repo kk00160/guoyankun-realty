@@ -19,7 +19,7 @@ const BOOKING_ENABLED = process.env.BOOKING_ENABLED === "true";
 const TOUR_ENABLED = process.env.TOUR_ENABLED === "true";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 
-type Feature = "booking" | "tour" | null;
+type Feature = "booking" | "tour" | "console" | null;
 
 /**
  * 這個路徑屬於哪個功能。
@@ -47,6 +47,18 @@ function featureOf(pathname: string): Feature {
     pathname.startsWith("/admin/appointments")
   ) {
     return "booking";
+  }
+
+  /**
+   * 控台本身。刻意沒有功能開關 —— 它是「所有系統的入口」，
+   * 每個系統關著的時候，控台正好要負責告訴你哪個關著、為什麼關著。
+   * 跟著任何一個開關一起關掉的話，全部關閉時你會連個能看的頁面都沒有。
+   *
+   * 沒有開關不等於沒有防護：/admin 開頭一律要密碼（見 isAdminPath）。
+   * 這裡放最後面，前面幾個比較明確的路徑先比對。
+   */
+  if (pathname === "/admin" || pathname === "/admin/logout") {
+    return "console";
   }
 
   return null;
@@ -113,6 +125,25 @@ export function middleware(request: NextRequest) {
   if (feature === "booking" && !BOOKING_ENABLED) return notFound(pathname);
   if (feature === "tour" && !TOUR_ENABLED) return notFound(pathname);
 
+  /**
+   * 登出。
+   *
+   * HTTP Basic 沒有真正的登出 —— 帳密是瀏覽器記著、每次自動送出的，
+   * 伺服器這邊沒有 session 可以清掉。唯一可靠的做法是回一次 401，
+   * 讓瀏覽器重新問帳密，使用者按「取消」就等於登出了。
+   *
+   * 所以這裡刻意放在密碼檢查「之前」：帶著正確密碼來也一樣回 401。
+   */
+  if (pathname === "/admin/logout") {
+    return new NextResponse("已登出。跳出來的視窗按取消，或直接關掉這個分頁。", {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": 'Basic realm="Admin", charset="UTF-8"',
+        "content-type": "text/plain; charset=utf-8"
+      }
+    });
+  }
+
   if (isAdminPath(pathname) && !hasValidCredentials(request)) {
     // 回 401 讓瀏覽器跳出輸入框；沒設密碼時同樣擋住。
     return new NextResponse("需要登入", {
@@ -128,5 +159,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/card/booking/:path*", "/api/:path*", "/tour/:path*"]
+  // "/admin" 單獨列出來：控台首頁本身也要進 middleware，不能只靠 /admin/:path*。
+  matcher: ["/admin", "/admin/:path*", "/card/booking/:path*", "/api/:path*", "/tour/:path*"]
 };

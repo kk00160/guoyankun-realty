@@ -133,7 +133,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
           </p>
         </div>
         <Link className="button-secondary" href="/admin/tours">
-          回帶看單列表
+          回帶看日記
         </Link>
       </div>
 
@@ -145,7 +145,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
 
       {!isTourOpen(tour) && (
         <p className="alert-bar" role="alert">
-          這張帶看單目前是關閉的（{formatTourDate(tour.expiresAt)} 到期），買方點連結會看到說明頁。
+          這筆帶看紀錄目前是關閉的（{formatTourDate(tour.expiresAt)} 到期），買方點連結會看到說明頁。
         </p>
       )}
 
@@ -170,7 +170,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
           產生帶看單
         </Link>
         <Link className="button-secondary" href="/admin/listings">
-          去案源庫加物件
+          去配案系統加物件
         </Link>
       </div>
 
@@ -259,7 +259,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
 
       {rows.length === 0 && (
         <p className="empty-note">
-          這張帶看單還沒有物件。到 <Link href="/admin/listings">案源庫</Link> 勾選後加進來。
+          這筆帶看紀錄還沒有物件。到 <Link href="/admin/listings">買方配案系統</Link> 勾選後加進來。
         </p>
       )}
     </div>

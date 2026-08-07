@@ -85,6 +85,16 @@ export function isTransientDbError(message: string) {
   return TRANSIENT.test(message);
 }
 
+/** 錯誤沒有 message 時的退路：把還原得出來的東西湊成一句話。 */
+function describeError(error: unknown) {
+  if (!error || typeof error !== "object") return String(error ?? "沒有錯誤訊息");
+  const bag = error as Record<string, unknown>;
+  const parts = ["code", "details", "hint", "name"]
+    .map((key) => (bag[key] ? `${key}=${String(bag[key])}` : ""))
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : JSON.stringify(bag);
+}
+
 /**
  * 跑一次查詢；遇到會自己好的錯誤就重試，最多三次，間隔遞增。
  *
@@ -101,7 +111,10 @@ export async function readWithRetry<T>(
     const { data, error } = await run();
     if (!error) return (data ?? []) as T;
 
-    lastMessage = error.message;
+    // 有些失敗回來的 error.message 是空字串（實際遇過）。
+    // 直接串進訊息會變成「…失敗：」後面什麼都沒有，等於什麼都沒說。
+    // 沒有訊息就把整包倒出來，寧可醜也不要讓人對著一個空白錯誤瞎猜。
+    lastMessage = error.message?.trim() || describeError(error);
     if (!isTransientDbError(lastMessage)) break;
 
     // 200ms、600ms —— 時鐘偏差通常一兩秒內就過去了。

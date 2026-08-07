@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Topbar from "@/app/_components/Topbar";
 import DbSetupNotice from "@/app/admin/_components/DbSetupNotice";
 import { isDbConfigured } from "@/lib/db";
 import { getTour, listTourEntries } from "@/lib/tour-store";
@@ -9,7 +8,7 @@ import TourDetail from "./TourDetail";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "帶看單細節",
+  title: "帶看紀錄",
   robots: { index: false, follow: false }
 };
 
@@ -19,7 +18,6 @@ export default async function TourDetailPage({ params }: { params: Promise<{ id:
   if (!isDbConfigured()) {
     return (
       <div className="admin-page">
-        <Topbar admin title="帶看單" />
         <div className="admin-shell">
           <DbSetupNotice />
         </div>
@@ -34,7 +32,6 @@ export default async function TourDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="admin-page">
-      <Topbar admin title="帶看單" />
       <TourDetail tour={tour} entries={entries} />
     </div>
   );

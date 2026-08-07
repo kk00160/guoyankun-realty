@@ -33,7 +33,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
         ...current
       ]);
       form.reset();
-      setMessage("已建立帶看單。接下來去案源庫勾物件加進來。");
+      setMessage("已建立帶看紀錄。接下來去買方配案系統勾物件加進來。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "建立失敗");
     } finally {
@@ -75,15 +75,15 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
     <div className="admin-shell">
       <div className="admin-heading">
         <div>
-          <h1>帶看單</h1>
-          <p>一張帶看單 = 一個買方 + 一批物件 + 一個可撤銷的連結。</p>
+          <h1>帶看日記</h1>
+          <p>一筆帶看紀錄 = 一個買方 + 一批物件 + 一個可撤銷的連結。每次帶看都留在這裡。</p>
         </div>
       </div>
 
       <form className="manual-form" onSubmit={createTour}>
         <div className="manual-grid">
           <label>
-            帶看單名稱 <span className="required">必填</span>
+            這次要帶誰看 <span className="required">必填</span>
             <input name="title" required maxLength={100} placeholder="陳先生 8/10 東區看房" />
           </label>
           <label>
@@ -108,7 +108,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
           </label>
         </div>
         <button type="submit" className="button" disabled={busy === "create"}>
-          {busy === "create" ? "建立中…" : "開一張新的帶看單"}
+          {busy === "create" ? "建立中…" : "開一筆新的帶看紀錄"}
         </button>
       </form>
 
@@ -166,7 +166,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
         })}
       </div>
 
-      {tours.length === 0 && <p className="empty-note">還沒有帶看單。用上面的表單開第一張。</p>}
+      {tours.length === 0 && <p className="empty-note">還沒有任何帶看紀錄。用上面的表單開第一筆。</p>}
     </div>
   );
 }

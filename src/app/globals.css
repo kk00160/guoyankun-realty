@@ -1151,6 +1151,210 @@ a {
   font-size: 13px;
 }
 
+/* ---------------------------------------------------------------
+   控台導覽列（所有後台頁面共用，見 src/app/admin/layout.tsx）
+   --------------------------------------------------------------- */
+
+.console-bar {
+  background: var(--navy-950);
+  color: #fff;
+  border-bottom: 3px solid var(--gold-500);
+  padding: 12px 20px 0;
+}
+
+.console-bar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.console-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 900;
+  font-size: 17px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.console-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gold-500);
+}
+
+.console-logout {
+  font-size: 13px;
+  color: #d9e6f5;
+  text-decoration: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.console-logout:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* 分頁列。手機上會變多，所以讓它橫向捲而不是擠成兩三行。 */
+.console-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: none;
+}
+
+.console-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.console-tabs a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #d9e6f5;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.console-tabs a:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* 目前所在的分頁反白，跟其他分頁拉開對比，一眼知道自己在哪。 */
+.console-tabs a[data-on="true"] {
+  background: #fff;
+  color: var(--navy-950);
+}
+
+/* ---------------------------------------------------------------
+   控台首頁
+   --------------------------------------------------------------- */
+
+.console-hero {
+  margin-bottom: 22px;
+}
+
+.console-hero h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+}
+
+.console-hero p {
+  margin: 0;
+  color: #9fb3d1;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.console-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.console-card {
+  background: #101d38;
+  border: 1px solid #22355e;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.console-card[data-off="true"] {
+  opacity: 0.72;
+}
+
+.console-card header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.console-card-icon {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.console-card h2 {
+  margin: 0 0 5px;
+  font-size: 19px;
+}
+
+.console-card header p {
+  margin: 0;
+  font-size: 13px;
+  color: #9fb3d1;
+  line-height: 1.75;
+}
+
+.console-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.console-stats div {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.console-stats dt {
+  font-size: 12px;
+  color: #9fb3d1;
+  margin-bottom: 3px;
+}
+
+.console-stats dd {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.console-note,
+.console-off {
+  margin: 0;
+  font-size: 13px;
+  color: #9fb3d1;
+  line-height: 1.8;
+}
+
+.console-off {
+  border-left: 3px solid var(--gold-500);
+  padding-left: 12px;
+}
+
+.console-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.console-foot {
+  margin: 26px 0 0;
+  font-size: 13px;
+  color: #7d8fab;
+}
+
 .admin-page {
   min-height: 100vh;
   background: #0a1326;

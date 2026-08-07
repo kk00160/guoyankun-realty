@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Topbar from "@/app/_components/Topbar";
 import { listAppointments } from "@/lib/appointment-store";
 import AppointmentBoard from "./AppointmentBoard";
 
@@ -24,7 +23,6 @@ export default async function AppointmentsPage({
 
   return (
     <div className="admin-page">
-      <Topbar admin />
       <AppointmentBoard initialRows={rows} status={status} />
     </div>
   );

@@ -23,3 +23,6 @@ public/card/abin.jpg
 
 # 本機專用的資料匯入腳本與其暫存檔。不進版控，也不隨部署上線。
 scripts/
+
+# 驗證後台版面用的暫存快照（含客戶資料，絕不進版控）
+public/_snap.html

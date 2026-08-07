@@ -55,6 +55,23 @@ function readOne<T>(
   return readWithRetry<T | null>(() => run() as never, what) as Promise<T | null>;
 }
 
+/**
+ * 只問數量的查詢也要走重試。
+ *
+ * count 查詢的回傳是 { count, error } 而不是 { data, error }，
+ * 所以先轉成 readWithRetry 認得的形狀。少了這層，控台首頁在
+ * 「JWT issued at future」那幾秒會空著數字 —— 實際踩過。
+ */
+function readCount(
+  run: () => PromiseLike<{ count: number | null; error: { message: string } | null }>,
+  what: string
+) {
+  return readWithRetry<number>(
+    () => Promise.resolve(run()).then(({ count, error }) => ({ data: count ?? 0, error })),
+    what
+  );
+}
+
 // ---------------------------------------------------------------
 // 案源
 // ---------------------------------------------------------------
@@ -130,6 +147,18 @@ export async function listListings(query: ListingQuery): Promise<ListingPage> {
     page: query.page,
     pageCount: Math.max(1, Math.ceil(result.count / PAGE_SIZE))
   };
+}
+
+/**
+ * 案源總數，控台首頁用。
+ *
+ * 用 head + count 只問數字不搬資料，上萬筆也是一次很輕的查詢。
+ */
+export async function countListings(status: ListingStatus = "active"): Promise<number> {
+  return readCount(
+    () => db().from("listings").select("*", { count: "exact", head: true }).eq("status", status),
+    "計算案源數量"
+  );
 }
 
 export async function getListing(id: string): Promise<Listing | null> {

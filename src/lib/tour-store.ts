@@ -18,6 +18,7 @@ import {
   type BuyerChoice,
   type Tour,
   type TourItem,
+  type TourTimeSlot,
   createTourToken,
   defaultExpiry,
   isValidTokenFormat,
@@ -397,6 +398,20 @@ export async function patchTour(
   if (error) throw new Error(`更新帶看單失敗：${error.message}`);
 }
 
+/**
+ * 整筆刪掉。
+ *
+ * tour_items.tour_id 有 on delete cascade（見 schema.sql），
+ * 所以底下的物件關聯會一起清乾淨，不會留下孤兒列。
+ * 案源本身（listings）不會被動到 —— 那是共用的，只是這次沒帶到而已。
+ *
+ * 沒有「復原」。刪掉之後那條買方連結也跟著失效。
+ */
+export async function deleteTour(id: string) {
+  const { error } = await db().from("tours").delete().eq("id", id);
+  if (error) throw new Error(`刪除帶看紀錄失敗：${error.message}`);
+}
+
 /** 換一把新鑰匙：舊連結立刻失效。買方把連結轉傳出去時用。 */
 export async function rotateTourToken(id: string): Promise<string> {
   const token = createTourToken();
@@ -505,6 +520,58 @@ export async function markTourSubmitted(tourId: string) {
 
   // 欄位還沒建（舊資料庫沒跑過新的 schema.sql）也不要擋住買方。
   if (error) console.error("[tour] 標記送出失敗：", error.message);
+}
+
+// ---------------------------------------------------------------
+// 預約帶看時間
+// ---------------------------------------------------------------
+
+/**
+ * 欄位還沒建的時候，Postgres／PostgREST 回的是一句英文技術訊息，
+ * 看到的人只會覺得「壞了」。這裡換成一句知道要做什麼的話。
+ */
+function timeSlotError(message: string) {
+  if (/time_slots/i.test(message) && /(does not exist|could not find|schema cache)/i.test(message)) {
+    return new Error(
+      "資料庫還沒有 time_slots 這個欄位。" +
+        "到 Supabase 的 SQL Editor 跑一次 supabase/2026-08-07-times-and-leads.sql 就會好。"
+    );
+  }
+  return new Error(`存帶看時間失敗：${message}`);
+}
+
+/** 你開的候選時段。整份覆蓋，順序由 toTimeSlots 統一排。 */
+export async function setTourTimeSlots(id: string, slots: TourTimeSlot[]) {
+  const { error } = await db()
+    .from("tours")
+    .update({ time_slots: slots as unknown as TourUpdate["time_slots"] })
+    .eq("id", id);
+  if (error) throw timeSlotError(error.message);
+}
+
+/**
+ * 買方勾選／取消一個時段。
+ *
+ * 用「讀出來、改一格、整份寫回去」而不是直接改 jsonb 裡的某一格：
+ * Supabase 的 update 沒有部分更新 jsonb 陣列的乾淨寫法，
+ * 而這個陣列最多幾筆，整份寫回去成本可以忽略。
+ *
+ * 極端情況下你正在後台改時段、買方同時在勾選，會有一方被覆蓋。
+ * 這個機率低到不值得為它加鎖 —— 真的撞到，買方重按一次就好。
+ */
+export async function setBuyerTimePick(tourId: string, slotId: string, picked: boolean) {
+  const tour = await getTour(tourId);
+  if (!tour) throw new Error("找不到這筆帶看紀錄。");
+
+  const slots = tour.timeSlots;
+  if (!slots.some((slot) => slot.id === slotId)) {
+    // 你剛好把那個時段刪掉了。不要當成錯誤炸掉買方的畫面。
+    return { slots, missing: true };
+  }
+
+  const next = slots.map((slot) => (slot.id === slotId ? { ...slot, picked } : slot));
+  await setTourTimeSlots(tourId, next);
+  return { slots: next, missing: false };
 }
 
 /** 買方在手機上按「想看／略過」。這是唯一一個不需要密碼就能寫入的動作。 */

@@ -70,7 +70,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return ok({
       order: ordered.map((point) => point.id),
       summary: routeSummary(ordered, origin),
-      mapUrls: googleMapsUrls(ordered, origin),
+      // 出發點沒有座標時，用它的名字當導航起點（見 googleMapsUrls 的說明）。
+      mapUrls: googleMapsUrls(ordered, origin, tour.originLabel ?? undefined),
       missingCoords
     });
   } catch (error) {

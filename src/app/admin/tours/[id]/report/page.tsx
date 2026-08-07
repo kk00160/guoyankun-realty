@@ -64,7 +64,7 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
 
   const legs = routeLegs(points, origin);
   const summary = routeSummary(points, origin);
-  const mapUrls = googleMapsUrls(points, origin);
+  const mapUrls = googleMapsUrls(points, origin, tour.originLabel ?? undefined);
 
   /**
    * 每一站對應「從上一站過來」的那一段。

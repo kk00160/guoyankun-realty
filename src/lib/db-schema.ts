@@ -50,6 +50,8 @@ type TourRow = {
   origin_lng: number | null;
   note: string | null;
   submitted_at: string | null;
+  /** 候選帶看時段（TourTimeSlot[]）。見 supabase/2026-08-07-times-and-leads.sql。 */
+  time_slots: Json;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +64,27 @@ type TourItemRow = {
   buyer_note: string | null;
   decided_at: string | null;
   visit_order: number | null;
+  agent_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * 首頁表單留下來的來客。
+ *
+ * 跟 appointment-store.ts 那套「選時段預約」是兩回事：
+ * 那個是選好時段的預約，這個是「留個資料請你聯絡我」的詢問。
+ * 刻意不合併 —— 兩者的欄位、流程與急迫性都不一樣。
+ */
+type LeadRow = {
+  id: string;
+  name: string;
+  phone: string;
+  service: string | null;
+  time_slot: string | null;
+  message: string | null;
+  source: string;
+  status: string;
   agent_note: string | null;
   created_at: string;
   updated_at: string;
@@ -91,6 +114,7 @@ type Table<Row, Required extends keyof Row = never> = {
 /** update() 的參數型別。用這個而不是 Record<string, unknown>，寫錯欄位名會在 build 時被抓出來。 */
 export type ListingUpdate = Partial<ListingRow>;
 export type TourUpdate = Partial<TourRow>;
+export type LeadUpdate = Partial<LeadRow>;
 
 export type Database = {
   public: {
@@ -99,6 +123,7 @@ export type Database = {
       tours: Table<TourRow, "title" | "token" | "expires_at">;
       tour_items: Table<TourItemRow, "tour_id" | "listing_id">;
       crawl_runs: Table<CrawlRunRow>;
+      leads: Table<LeadRow, "name" | "phone">;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

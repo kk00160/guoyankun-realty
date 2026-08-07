@@ -13,7 +13,7 @@ import {
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
 import { mapPlaceUrl, mapTarget } from "@/lib/route";
-import type { BuyerChoice } from "@/lib/tour";
+import { type BuyerChoice, type TourTimeSlot, formatSlot } from "@/lib/tour";
 
 type Entry = {
   listingId: string;
@@ -70,15 +70,18 @@ export default function BuyerPicker({
   title,
   buyerName,
   submittedAt,
-  entries
+  entries,
+  timeSlots
 }: {
   token: string;
   title: string;
   buyerName: string | null;
   submittedAt: string | null;
   entries: Entry[];
+  timeSlots: TourTimeSlot[];
 }) {
   const [rows, setRows] = useState(entries);
+  const [slots, setSlots] = useState(timeSlots);
   const [name, setName] = useState(buyerName ?? "");
   const [askName, setAskName] = useState(!buyerName);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -87,6 +90,32 @@ export default function BuyerPicker({
   const [submitted, setSubmitted] = useState(Boolean(submittedAt));
 
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
+  const pickedSlots = useMemo(() => slots.filter((slot) => slot.picked), [slots]);
+
+  /** 買方勾一個時段。跟物件一樣即時存，不必等送出。 */
+  async function chooseTime(slotId: string, picked: boolean) {
+    const previous = slots;
+    setSlots((current) => current.map((slot) => (slot.id === slotId ? { ...slot, picked } : slot)));
+    setBusy(slotId);
+    setMessage("");
+
+    try {
+      const response = await fetch(`/api/tour/${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "time", slotId, picked })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "沒有存成功");
+      // 以伺服器回來的為準：阿坤可能剛好在後台改了時段。
+      if (Array.isArray(payload.slots)) setSlots(payload.slots);
+    } catch (error) {
+      setSlots(previous);
+      setMessage(error instanceof Error ? error.message : "沒有存成功，請再按一次。");
+    } finally {
+      setBusy("");
+    }
+  }
 
   async function choose(listingId: string, choice: BuyerChoice) {
     const previous = rows;
@@ -181,8 +210,9 @@ export default function BuyerPicker({
             <b>已經送出了，謝謝你 🙌</b>
             <p>
               {interested.length > 0
-                ? `你挑了 ${interested.length} 間想看的，我收到了，會盡快跟你聯絡安排時間。`
-                : "這次沒有特別想看的也沒關係，我知道了，再幫你留意更合適的。"}
+                ? `你挑了 ${interested.length} 間想看的`
+                : "這次沒有特別想看的也沒關係"}
+              {pickedSlots.length > 0 ? `，時間選了 ${pickedSlots.length} 個，我收到了，會盡快跟你確認。` : "，我收到了，會盡快跟你聯絡安排時間。"}
               還想調整的話，直接改下面的選擇再送出一次就好。
             </p>
           </div>
@@ -324,6 +354,39 @@ export default function BuyerPicker({
 
       {rows.length === 0 && <p className="empty-note">這份清單目前還沒有物件，我整理好會再通知你。</p>}
 
+      {/* 預約帶看時間。阿坤沒開時段就整區不出現，不要給買方一個空盒子。 */}
+      {slots.length > 0 && (
+        <section className="buyer-times">
+          <h2>想約什麼時候看？</h2>
+          {/* 這句是阿坤指定要放的：多幾個選項他才排得動。 */}
+          <p className="buyer-times-note">
+            方便的話<b>請選兩個以上的時間</b>，我比較好幫你安排，也不用來回問。
+          </p>
+
+          <div className="buyer-time-grid">
+            {slots.map((slot) => (
+              <button
+                key={slot.id}
+                type="button"
+                data-on={slot.picked}
+                onClick={() => chooseTime(slot.id, !slot.picked)}
+                disabled={busy === slot.id}
+              >
+                {formatSlot(slot.startsAt)}
+              </button>
+            ))}
+          </div>
+
+          <p className="buyer-times-state">
+            {pickedSlots.length === 0
+              ? "還沒選時間。都不方便的話直接打給我，我們另外約。"
+              : pickedSlots.length === 1
+                ? "選了 1 個。再多選一個會更好排。"
+                : `選了 ${pickedSlots.length} 個，很好安排，謝謝你 🙌`}
+          </p>
+        </section>
+      )}
+
       <footer className="buyer-foot">
         <p>
           清單上的資料僅供參考，實際屋況、價格與產權情形，我會在帶看時跟你逐一確認。
@@ -341,7 +404,7 @@ export default function BuyerPicker({
           <div>
             <b>{interested.length > 0 ? `想看 ${interested.length} 間` : "還沒挑"}</b>
             {/* 刻意不顯示「還有幾間沒選」。沒按到的不是待辦事項，就只是沒興趣而已。 */}
-            <span>　挑幾間都可以</span>
+            <span>{slots.length > 0 ? `　時間 ${pickedSlots.length} 個` : "　挑幾間都可以"}</span>
           </div>
           <button type="button" className="button" onClick={submit} disabled={busy === "submit"}>
             {busy === "submit" ? "送出中…" : submitted ? "重新送出" : "送出給" + PROFILE.alias}

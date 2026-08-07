@@ -5,7 +5,14 @@ import { useState } from "react";
 import { buyerTourUrl } from "@/lib/buyer-link";
 import { formatPing, formatPrice, formatSeenAt, formatUnitPrice } from "@/lib/listings";
 import { mapDirectionsUrl, mapTarget } from "@/lib/route";
-import { BUYER_CHOICE_LABEL, type Tour, formatTourDate, isTourOpen } from "@/lib/tour";
+import {
+  BUYER_CHOICE_LABEL,
+  type Tour,
+  type TourTimeSlot,
+  formatSlot,
+  formatTourDate,
+  isTourOpen
+} from "@/lib/tour";
 import type { TourEntry } from "@/lib/tour-store";
 
 type RouteResult = {
@@ -22,10 +29,13 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [slots, setSlots] = useState<TourTimeSlot[]>(tour.timeSlots);
+  const [newSlot, setNewSlot] = useState("");
 
   const interested = rows.filter((row) => row.buyerChoice === "interested").length;
   const rejected = rows.filter((row) => row.buyerChoice === "rejected").length;
   const pending = rows.filter((row) => row.buyerChoice === "pending").length;
+  const picked = slots.filter((slot) => slot.picked);
 
   async function planRoute(scope: "interested" | "remaining") {
     setBusy("route");
@@ -112,6 +122,50 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
     }
   }
 
+  /**
+   * 候選時段一律整份送出（不是「新增一個」）。
+   *
+   * 這樣後端才有辦法把買方已經勾好的狀態對回去 —— 見 /api/admin/tours/[id] 的說明。
+   * 送出的是 datetime-local 的字串，交給瀏覽器換算成當地時間再轉 ISO，
+   * 不要自己拼時區，那是最容易差八小時的地方。
+   */
+  async function saveSlots(next: TourTimeSlot[]) {
+    setBusy("slots");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeSlots: next.map((slot) => ({ startsAt: slot.startsAt })) })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "時段沒存成功");
+      setSlots(payload.timeSlots ?? []);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "時段沒存成功");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function addSlot(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newSlot) return;
+
+    const at = new Date(newSlot);
+    if (Number.isNaN(at.getTime())) {
+      setMessage("那個時間看不懂，請重選。");
+      return;
+    }
+    if (slots.some((slot) => slot.startsAt === at.toISOString())) {
+      setMessage("這個時段已經在清單裡了。");
+      return;
+    }
+
+    setNewSlot("");
+    void saveSlots([...slots, { id: "", startsAt: at.toISOString(), picked: false }]);
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(buyerTourUrl(token));
@@ -158,6 +212,57 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
           換一把新鑰匙
         </button>
       </div>
+
+      {/* 預約帶看時間。你開幾個時段，買方在自己的連結上勾方便的那幾個。
+          放在買方連結底下，是因為順序就是「開時段 → 傳連結 → 等他勾」。 */}
+      <section className="slot-box">
+        <div className="slot-head">
+          <h2>預約帶看時間</h2>
+          <p>
+            開幾個你方便的時段，買方會在他的連結上一起勾。
+            {picked.length > 0 ? (
+              <b>　買方勾了 {picked.length} 個。</b>
+            ) : slots.length > 0 ? (
+              "　買方還沒勾。"
+            ) : (
+              ""
+            )}
+          </p>
+        </div>
+
+        <form className="slot-add" onSubmit={addSlot}>
+          <input
+            type="datetime-local"
+            value={newSlot}
+            onChange={(event) => setNewSlot(event.target.value)}
+            aria-label="新增候選時段"
+          />
+          <button type="submit" className="button-secondary" disabled={busy === "slots" || !newSlot}>
+            {busy === "slots" ? "存檔中…" : "新增時段"}
+          </button>
+        </form>
+
+        {slots.length > 0 ? (
+          <ul className="slot-list">
+            {slots.map((slot) => (
+              <li key={slot.id} data-picked={slot.picked}>
+                <span>{formatSlot(slot.startsAt)}</span>
+                {slot.picked && <span className="slot-tag">買方要這個</span>}
+                <button
+                  type="button"
+                  onClick={() => saveSlots(slots.filter((row) => row.id !== slot.id))}
+                  disabled={busy === "slots"}
+                  aria-label={`移除 ${formatSlot(slot.startsAt)}`}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="slot-empty">還沒開時段。沒開的話，買方那邊不會出現選時間這一區。</p>
+        )}
+      </section>
 
       <div className="filter-row">
         <button type="button" className="button" onClick={() => planRoute("interested")} disabled={busy === "route"}>

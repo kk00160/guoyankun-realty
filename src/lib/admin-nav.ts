@@ -64,16 +64,28 @@ export const ADMIN_SYSTEMS: AdminSystem[] = [
     links: [{ label: "帶看日記", href: "/admin/tours", icon: "📔" }]
   },
   {
+    id: "lead",
+    label: "來客名單",
+    title: "預約諮詢系統",
+    icon: "📇",
+    href: "/admin/leads",
+    summary: "客戶在首頁按「送出預約」留下的姓名、電話與需求，全部落在這裡。",
+    cta: "看來客名單",
+    // 刻意沒有開關：關掉等於安靜地掉客戶。見 middleware 的 featureOf()。
+    enabled: true,
+    links: []
+  },
+  {
     id: "booking",
-    label: "預約管理",
-    title: "預約系統",
+    label: "時段預約",
+    title: "線上選時段預約",
     icon: "📅",
     href: "/admin/appointments",
-    summary: "客戶線上選時段預約諮詢，這裡看名單、確認或取消。",
+    summary: "客戶自己挑一個時段預約諮詢。跟上面的來客名單是兩回事：那個是留資料請你回電，這個是直接把時間定下來。",
     cta: "看預約名單",
     enabled: BOOKING_ENABLED,
     disabledReason:
-      "預約資料還存在本機檔案，雲端主機的檔案不會保留，客戶送出的預約會消失。改成資料庫之前刻意不開，首頁的預約一律導到 LINE。",
+      "這一套的資料還存在本機檔案，雲端主機的檔案不會保留，客戶送出的預約會消失，所以刻意沒開。首頁的表單走的是上面那套「來客名單」，資料有進資料庫，不受影響。",
     links: []
   }
 ];

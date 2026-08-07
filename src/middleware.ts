@@ -19,7 +19,7 @@ const BOOKING_ENABLED = process.env.BOOKING_ENABLED === "true";
 const TOUR_ENABLED = process.env.TOUR_ENABLED === "true";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 
-type Feature = "booking" | "tour" | "console" | null;
+type Feature = "booking" | "tour" | "console" | "lead" | null;
 
 /**
  * 這個路徑屬於哪個功能。
@@ -29,7 +29,21 @@ type Feature = "booking" | "tour" | "console" | null;
  *    這是刻意的：忘了登記的後果是「功能不通」，而不是「沒有防護就上線」。
  */
 function featureOf(pathname: string): Feature {
+  /**
+   * 首頁表單的來客名單。
+   *
+   * /api/lead 是公開的收件口（客戶送出用），/admin/leads 是你自己看的名單。
+   *
+   * 刻意沒有功能開關：關掉它的後果是客戶填了表單、資料安靜地掉在地上，
+   * 而你不會知道有人來過。這個代價比任何開關能換到的好處都嚴重。
+   * 沒有開關不等於沒有防護 —— /admin/leads 一樣要密碼（見 isAdminPath）。
+   */
+  if (pathname === "/api/lead" || pathname.startsWith("/admin/leads") || pathname.startsWith("/api/admin/leads")) {
+    return "lead";
+  }
+
   // 帶看助手。/tour 與 /api/tour 是給買方的公開路徑，不需要密碼但受開關管制。
+  // ⚠️ 這條用 /api/admin 一網打盡，所以任何「不屬於帶看」的 /api/admin/* 都必須寫在它前面。
   if (
     pathname.startsWith("/tour") ||
     pathname.startsWith("/api/tour") ||

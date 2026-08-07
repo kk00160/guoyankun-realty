@@ -194,28 +194,44 @@ function navTarget(point: RoutePoint) {
  *
  * @returns 一或多條連結。一趟帶看通常只會有一條。
  */
-export function googleMapsUrls(ordered: RoutePoint[], origin?: RoutePoint): string[] {
+export function googleMapsUrls(
+  ordered: RoutePoint[],
+  origin?: RoutePoint,
+  /**
+   * 只有名字、沒有座標的出發點，例如「門市」。
+   *
+   * 後台的出發點欄位刻意只剩一個文字框 —— 沒有人會手動去查自己門市的經緯度再填進來。
+   * 沒有座標就算不進里程推估，但拿來當導航連結的起點完全夠用：
+   * Google Maps 認得地名，而查詢字串會補上「台南市」前綴（見 mapTarget 的說明）。
+   * 有帶座標的 origin 時以座標為準。
+   */
+  originQuery?: string
+): string[] {
+  const textOrigin = origin ? null : originQuery?.trim();
   const stops = origin ? [origin, ...ordered] : ordered;
-  if (stops.length < 2) return [];
+
+  // 文字出發點沒有座標，塞不進 RoutePoint，所以在字串層級補到最前面。
+  const targets = [...(textOrigin ? [localise(null, textOrigin)] : []), ...stops.map(navTarget)];
+  if (targets.length < 2) return [];
 
   // 每段最多 = 起點 + 9 個中繼點 + 終點 = 11 個停靠點。
   const perSegment = MAX_WAYPOINTS + 2;
   const urls: string[] = [];
 
-  for (let start = 0; start < stops.length - 1; start += perSegment - 1) {
-    const segment = stops.slice(start, start + perSegment);
+  for (let start = 0; start < targets.length - 1; start += perSegment - 1) {
+    const segment = targets.slice(start, start + perSegment);
     if (segment.length < 2) break;
 
     const params = new URLSearchParams({
       api: "1",
-      origin: navTarget(segment[0]),
-      destination: navTarget(segment[segment.length - 1]),
+      origin: segment[0],
+      destination: segment[segment.length - 1],
       travelmode: "driving"
     });
 
     const waypoints = segment.slice(1, -1);
     if (waypoints.length > 0) {
-      params.set("waypoints", waypoints.map(navTarget).join("|"));
+      params.set("waypoints", waypoints.join("|"));
     }
 
     urls.push(`https://www.google.com/maps/dir/?${params.toString()}`);

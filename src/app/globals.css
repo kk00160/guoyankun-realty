@@ -1365,6 +1365,243 @@ a {
   color: #7d8fab;
 }
 
+/* 蜜罐欄位。不能用 display:none —— 有些機器人會跳過看不見的欄位，
+   要的是「人看不到、但在 DOM 裡是正常欄位」。 */
+.lead-trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------
+   來客名單（後台）
+   --------------------------------------------------------------- */
+
+.lead-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lead-card {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 還沒聯絡的那幾筆要跳出來 —— 打開這一頁就是為了找它們。 */
+.lead-card[data-status="new"] {
+  border-color: var(--gold-500);
+}
+
+.lead-card[data-status="spam"],
+.lead-card[data-status="done"] {
+  opacity: 0.6;
+}
+
+.lead-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lead-card h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lead-phone {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-on-dark);
+}
+
+.lead-meta {
+  margin: 0;
+  font-size: 13px;
+  color: #9fb0c7;
+}
+
+.lead-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.tag[data-status="new"] {
+  border-color: var(--gold-500);
+  color: var(--gold-on-dark);
+}
+
+/* ---------------------------------------------------------------
+   預約帶看時間（後台：開時段）
+   --------------------------------------------------------------- */
+
+.slot-box {
+  border: 1px solid #243955;
+  background: #101e37;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.slot-head h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.slot-head p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #9fb0c7;
+  line-height: 1.7;
+}
+
+.slot-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.slot-add input {
+  min-height: 40px;
+  border-radius: 6px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  color: #f5f8fc;
+  padding: 8px 11px;
+  font: inherit;
+}
+
+.slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.slot-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #2b405e;
+  background: #0a1326;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 買方勾過的時段要一眼看得出來 —— 這正是你打開這一頁想知道的事。 */
+.slot-list li[data-picked="true"] {
+  border-color: var(--gold-500);
+  background: rgba(212, 165, 78, 0.14);
+}
+
+.slot-tag {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold-on-dark);
+}
+
+.slot-list li button {
+  border: 0;
+  background: none;
+  color: #7d8fab;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+}
+
+.slot-list li button:hover {
+  color: #ff8080;
+}
+
+.slot-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #7d8fab;
+}
+
+/* ---------------------------------------------------------------
+   預約帶看時間（買方：勾時段）
+   --------------------------------------------------------------- */
+
+.buyer-times {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.buyer-times h2 {
+  margin: 0 0 6px;
+  font-size: 19px;
+}
+
+.buyer-times-note {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #5b5266;
+  line-height: 1.8;
+}
+
+.buyer-time-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+/* 時段按鈕做得跟「想看／略過」一樣大：買方多半用手機單手在點。 */
+.buyer-time-grid button {
+  min-height: 52px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: #fff;
+  color: #2b2233;
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.buyer-time-grid button[data-on="true"] {
+  border-color: var(--brand-green);
+  background: var(--brand-green);
+  color: #fff;
+}
+
+.buyer-time-grid button:disabled {
+  opacity: 0.6;
+}
+
+.buyer-times-state {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #5b5266;
+  line-height: 1.7;
+}
+
 .admin-page {
   min-height: 100vh;
   background: #0a1326;
@@ -1832,8 +2069,19 @@ a {
   color: #aebfd4;
 }
 
+/* 欄寬對齊用。目前的排法是「2 + 1 + 1」一列、「4」一列，兩列都剛好填滿，
+   不會留下半格空白（之前 3 個欄位配 4 欄，右邊永遠缺一角）。 */
 .manual-grid .span-2 {
   grid-column: span 2;
+}
+
+.manual-grid .span-4 {
+  grid-column: span 4;
+}
+
+/* 刪除這種不可復原的動作用紅字，跟旁邊的一般操作分開。 */
+.listing-actions .link-danger {
+  color: #ff8a8a;
 }
 
 .manual-grid .required {
@@ -2244,6 +2492,11 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* 欄數變成 2 之後，原本跨 4 欄的要跟著縮成跨 2，否則會溢出格線。 */
+  .manual-grid .span-4 {
+    grid-column: span 2;
+  }
+
   .tour-item {
     grid-template-columns: 40px 1fr;
   }
@@ -2260,7 +2513,8 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .manual-grid .span-2 {
+  .manual-grid .span-2,
+  .manual-grid .span-4 {
     grid-column: span 2;
   }
 

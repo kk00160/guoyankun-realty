@@ -24,8 +24,15 @@ export function fail(scope: string, error: unknown) {
   console.error(`[${scope}]`, error);
   const message = error instanceof Error ? error.message : "";
 
-  // 環境變數沒設好是最常見的狀況，這個要講清楚，不然只會看到「系統忙碌」。
-  if (message.includes("尚未設定")) {
+  /**
+   * 有幾種錯誤是「設定沒做完」，不是真的壞掉。這些要原樣講出來，
+   * 不然畫面只會顯示「系統忙碌」，而正確的下一步其實是去跑一段 SQL 或補一個環境變數。
+   *
+   * 判斷條件刻意寫死成我們自己寫的那幾句話，不用關鍵字模糊比對 ——
+   * 免得哪天資料庫的原始錯誤剛好夾到這些字，把欄位名或連線資訊漏出去。
+   */
+  const isSetupHint = message.includes("尚未設定") || message.includes("SQL Editor");
+  if (isSetupHint) {
     return NextResponse.json({ ok: false, error: message }, { status: 503 });
   }
 

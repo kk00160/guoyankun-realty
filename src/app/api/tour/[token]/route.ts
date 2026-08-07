@@ -1,6 +1,12 @@
 import { bad, fail, ok, optionalText, readJson } from "@/lib/api";
 import { BUYER_CHOICES, type BuyerChoice, isTourOpen, tourClosedReason } from "@/lib/tour";
-import { getTourByToken, markTourSubmitted, patchTour, setBuyerChoice } from "@/lib/tour-store";
+import {
+  getTourByToken,
+  markTourSubmitted,
+  patchTour,
+  setBuyerChoice,
+  setBuyerTimePick
+} from "@/lib/tour-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +47,14 @@ export async function POST(request: Request, context: { params: Promise<{ token:
         if (name) await patchTour(tour.id, { buyerName: name });
       }
       return ok({ submitted: true });
+    }
+
+    // 買方勾一個帶看時段。時段清單是你開的，買方只能在裡面挑，不能自己新增。
+    if (body.action === "time") {
+      const slotId = optionalText(body.slotId, 32);
+      if (!slotId) return bad("缺少時段編號。");
+      const result = await setBuyerTimePick(tour.id, slotId, body.picked === true);
+      return ok({ slots: result.slots, missing: result.missing });
     }
 
     const listingId = optionalText(body.listingId, 64);

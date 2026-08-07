@@ -5,6 +5,7 @@ import { listAppointments } from "@/lib/appointment-store";
 import { isDbConfigured } from "@/lib/db";
 import { BOOKING_ENABLED, TOUR_ENABLED } from "@/lib/feature-flags";
 import { PROFILE } from "@/lib/profile";
+import { countLeads } from "@/lib/lead-store";
 import { countListings, listTours } from "@/lib/tour-store";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,29 @@ async function tourStats(): Promise<{ stats: Stat[]; note: string }> {
   }
 }
 
+/** 首頁來客的即時數字。「待聯絡」是你打開控台最想先看到的數字。 */
+async function leadStats(): Promise<{ stats: Stat[]; note: string }> {
+  if (!isDbConfigured()) return { stats: [], note: "資料庫還沒接上，數字先空著。" };
+
+  try {
+    const [waiting, total] = await Promise.all([countLeads("new"), countLeads()]);
+    return {
+      stats: [
+        { label: "待聯絡", value: `${waiting} 筆` },
+        { label: "累計來客", value: `${total} 筆` }
+      ],
+      note: waiting > 0 ? `有 ${waiting} 筆還沒回，點進去看。` : ""
+    };
+  } catch (error) {
+    // 表還沒建的時候要講清楚下一步，不要只說「讀不到」。
+    const message = error instanceof Error ? error.message : "";
+    return {
+      stats: [],
+      note: message.includes("SQL Editor") ? message : "這次讀不到數字，系統本身還是進得去。"
+    };
+  }
+}
+
 /** 預約系統的即時數字。功能沒開就不查，不然只是白讀一個不會用到的檔案。 */
 async function bookingStats(): Promise<{ stats: Stat[]; note: string }> {
   if (!BOOKING_ENABLED) return { stats: [], note: "" };
@@ -77,8 +101,9 @@ async function bookingStats(): Promise<{ stats: Stat[]; note: string }> {
 }
 
 export default async function ConsolePage() {
-  // 兩張卡各自抓自己的數字，一邊掛掉不影響另一邊。
-  const [tour, booking] = await Promise.all([tourStats(), bookingStats()]);
+  // 每張卡各自抓自己的數字，一邊掛掉不影響其他張。
+  const [tour, lead, booking] = await Promise.all([tourStats(), leadStats(), bookingStats()]);
+  const statsFor = (id: string) => (id === "tour" ? tour : id === "lead" ? lead : booking);
 
   return (
     <div className="admin-page">
@@ -92,7 +117,7 @@ export default async function ConsolePage() {
 
         <div className="console-grid">
           {ADMIN_SYSTEMS.map((system) => {
-            const { stats, note } = system.id === "tour" ? tour : booking;
+            const { stats, note } = statsFor(system.id);
 
             return (
               <section key={system.id} className="console-card" data-off={!system.enabled}>

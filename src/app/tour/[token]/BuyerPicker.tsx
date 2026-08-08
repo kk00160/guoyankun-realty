@@ -12,8 +12,8 @@ import {
   resizeImage
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
-import { mapPlaceUrl, mapTarget } from "@/lib/route";
-import { type BuyerChoice, type TourMode, type TourTimeSlot, formatSlot } from "@/lib/tour";
+import { mapDirectionsUrl, mapPlaceUrl, mapTarget } from "@/lib/route";
+import type { BuyerChoice } from "@/lib/tour";
 
 type Entry = {
   listingId: string;
@@ -93,21 +93,15 @@ export default function BuyerPicker({
   title,
   buyerName,
   submittedAt,
-  mode,
-  entries,
-  timeSlots
+  entries
 }: {
   token: string;
   title: string;
   buyerName: string | null;
   submittedAt: string | null;
-  /** pick：買方自己勾　direct：直接給帶看卡 */
-  mode: TourMode;
   entries: Entry[];
-  timeSlots: TourTimeSlot[];
 }) {
   const [rows, setRows] = useState(entries);
-  const [slots, setSlots] = useState(timeSlots);
   /**
    * 買方稱呼只拿來打招呼，而且只由阿坤在後台填。
    *
@@ -118,21 +112,11 @@ export default function BuyerPicker({
    */
   const name = buyerName ?? "";
   const [openId, setOpenId] = useState<string | null>(null);
-  const [myTime, setMyTime] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(Boolean(submittedAt));
 
-  /**
-   * 帶看卡模式：已經談好要看哪幾間，買方不用再挑一次。
-   *
-   * 不只是把兩顆按鈕藏起來 —— 整頁的語氣都要跟著換。
-   * 已經約好的客人看到「想看／略過」會以為事情還沒定案，反而回頭再問一次。
-   */
-  const direct = mode === "direct";
-
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
-  const pickedSlots = useMemo(() => slots.filter((slot) => slot.picked), [slots]);
 
   /**
    * 帶看行程。阿坤在後台按過「排路線」之後，物件才會有看房順序。
@@ -150,67 +134,6 @@ export default function BuyerPicker({
         .sort((a, b) => (a.visitOrder ?? 0) - (b.visitOrder ?? 0)),
     [rows]
   );
-
-  /**
-   * 買方自己加一個時間。
-   *
-   * 為什麼要有這個：阿坤開的那幾個時段有可能都不方便。
-   * 只給「勾或不勾」的話，買方唯一的表達方式是全部不勾 ——
-   * 而「全部不勾」跟「還沒看」在後台長得一模一樣，這個人就這樣安靜地卡住了。
-   */
-  async function addMyTime(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!myTime) return;
-
-    const at = new Date(myTime);
-    if (Number.isNaN(at.getTime())) {
-      setMessage("那個時間看不懂，請重選一次。");
-      return;
-    }
-
-    setBusy("add-time");
-    setMessage("");
-    try {
-      const response = await fetch(`/api/tour/${encodeURIComponent(token)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add-time", startsAt: at.toISOString() })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "沒有加成功");
-      if (Array.isArray(payload.slots)) setSlots(payload.slots);
-      setMyTime("");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "沒有加成功，請再試一次。");
-    } finally {
-      setBusy("");
-    }
-  }
-
-  /** 買方勾一個時段。跟物件一樣即時存，不必等送出。 */
-  async function chooseTime(slotId: string, picked: boolean) {
-    const previous = slots;
-    setSlots((current) => current.map((slot) => (slot.id === slotId ? { ...slot, picked } : slot)));
-    setBusy(slotId);
-    setMessage("");
-
-    try {
-      const response = await fetch(`/api/tour/${encodeURIComponent(token)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "time", slotId, picked })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "沒有存成功");
-      // 以伺服器回來的為準：阿坤可能剛好在後台改了時段。
-      if (Array.isArray(payload.slots)) setSlots(payload.slots);
-    } catch (error) {
-      setSlots(previous);
-      setMessage(error instanceof Error ? error.message : "沒有存成功，請再按一次。");
-    } finally {
-      setBusy("");
-    }
-  }
 
   async function choose(listingId: string, choice: BuyerChoice) {
     const previous = rows;
@@ -263,14 +186,14 @@ export default function BuyerPicker({
     <div className="buyer-shell">
       <header className="buyer-head">
         <h1>{title}</h1>
-        {submitted && !direct ? (
+        {submitted ? (
           <div className="buyer-done">
             <b>已經送出了，謝謝你 🙌</b>
             <p>
               {interested.length > 0
                 ? `你挑了 ${interested.length} 間想看的`
                 : "這次沒有特別想看的也沒關係"}
-              {pickedSlots.length > 0 ? `，時間選了 ${pickedSlots.length} 個，我收到了，會盡快跟你確認。` : "，我收到了，會盡快跟你聯絡安排時間。"}
+              ，我收到了，會盡快跟你聯絡安排時間。
               還想調整的話，直接改下面的選擇再送出一次就好。
             </p>
           </div>
@@ -278,15 +201,11 @@ export default function BuyerPicker({
           /* 這份清單是阿坤挑過才送出來的，所以這裡不催進度、不要求「全部選完」。
              想全看、只挑一兩間、或一間都不挑，都是正常答案。 */
           <p>
-            {name ? `${name}，` : ""}
-            {direct
-              ? `這是我們這次要看的 ${rows.length} 間，點卡片可以看更多照片和詳細資料。下面選一下你方便的時間就好。`
-              : `這裡有 ${rows.length} 間。點卡片可以看更多照片和詳細資料，想看的按「想看」—— 要幾間就幾間，全部都想看也可以。挑好按最下面送出就行。`}
+            {name ? `${name}，` : ""}這裡有 {rows.length} 間。點卡片可以看更多照片和詳細資料，
+            想看的按「想看」—— 要幾間就幾間，全部都想看也可以。挑好按最下面送出就行。
           </p>
         )}
-        {!direct && interested.length > 0 && (
-          <div className="buyer-progress">已挑了 {interested.length} 間</div>
-        )}
+        {interested.length > 0 && <div className="buyer-progress">已挑了 {interested.length} 間</div>}
       </header>
 
       {message && <p className="form-message">{message}</p>}
@@ -294,11 +213,7 @@ export default function BuyerPicker({
       {plan.length > 0 && (
         <section className="buyer-plan">
           <h2>看房行程</h2>
-          <p className="buyer-plan-note">
-            {pickedSlots.length > 0
-              ? `時間：${pickedSlots.map((slot) => formatSlot(slot.startsAt)).join("、")}　（正式時間我會再跟你確認）`
-              : "時間還沒定，下面選幾個你方便的時段，我再跟你確認。"}
-          </p>
+          <p className="buyer-plan-note">這是我們要看的順序，時間我再跟你電話確認。</p>
           <ol className="buyer-plan-list">
             {plan.map((entry) => {
               const place = mapTarget(entry.listing);
@@ -311,8 +226,8 @@ export default function BuyerPicker({
                     　{formatPrice(entry.listing.totalPrice)}
                   </span>
                   {place && (
-                    <a href={mapPlaceUrl(place)} target="_blank" rel="noreferrer">
-                      看地圖
+                    <a href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer">
+                      🧭 導航
                     </a>
                   )}
                 </li>
@@ -407,20 +322,20 @@ export default function BuyerPicker({
 
                 {/* 刻意只留更新日期，不揭露資料從哪裡來。
                     日期不能拿掉：買方拿一個月前的價格來談，責任會落在阿坤身上。 */}
+                {/* 導航做成一顆看得見的按鈕，不是藏在句尾的小字連結。
+                    買方拿到清單之後真的會做的事就是「這間在哪、怎麼去」。
+                    目的地優先用阿坤補的正確門牌（見 route.ts 的 mapTarget）。 */}
+                {place && (
+                  <a className="buyer-nav-link" href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer">
+                    🧭 導航到這間
+                  </a>
+                )}
+
                 <p className="buyer-source">
                   資料更新於 {formatSeenAt(listing.lastSeenAt)}　·　實際屋況與價格以現場為準
-                  {place && (
-                    <>
-                      　·{" "}
-                      <a href={mapPlaceUrl(place)} target="_blank" rel="noreferrer">
-                        看地圖
-                      </a>
-                    </>
-                  )}
                 </p>
               </div>
 
-              {!direct && (
               <div className="buyer-actions">
                 <button
                   type="button"
@@ -441,67 +356,12 @@ export default function BuyerPicker({
                   略過
                 </button>
               </div>
-              )}
             </article>
           );
         })}
       </div>
 
       {rows.length === 0 && <p className="empty-note">這份清單目前還沒有物件，我整理好會再通知你。</p>}
-
-      {/* 預約帶看時間。
-          阿坤沒開時段時這一區照樣出現 —— 因為買方本來就可以自己提時間，
-          而「我什麼時候有空」是他唯一需要主動給的資訊。 */}
-      <section className="buyer-times">
-        <h2>想約什麼時候看？</h2>
-        {/* 這句是阿坤指定要放的：多幾個選項他才排得動。 */}
-        <p className="buyer-times-note">
-          方便的話<b>請選兩個以上的時間</b>，我比較好幫你安排，也不用來回問。
-        </p>
-
-        {slots.length > 0 && (
-          <div className="buyer-time-grid">
-            {slots.map((slot) => (
-              <button
-                key={slot.id}
-                type="button"
-                data-on={slot.picked}
-                onClick={() => chooseTime(slot.id, !slot.picked)}
-                disabled={busy === slot.id}
-              >
-                {formatSlot(slot.startsAt)}
-                {slot.by === "buyer" && <small>你加的</small>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* 自己挑時間。阿坤開的都不方便時，這是唯一能講清楚的方式。 */}
-        <form className="buyer-time-add" onSubmit={addMyTime}>
-          <label htmlFor="buyer-my-time">
-            {slots.length > 0 ? "上面都不方便？自己挑一個：" : "挑一個你方便的時間："}
-          </label>
-          <div>
-            <input
-              id="buyer-my-time"
-              type="datetime-local"
-              value={myTime}
-              onChange={(event) => setMyTime(event.target.value)}
-            />
-            <button type="submit" className="button-secondary" disabled={busy === "add-time" || !myTime}>
-              {busy === "add-time" ? "加入中…" : "加入這個時間"}
-            </button>
-          </div>
-        </form>
-
-        <p className="buyer-times-state">
-          {pickedSlots.length === 0
-            ? "還沒選時間。都不方便的話直接打給我，我們另外約。"
-            : pickedSlots.length === 1
-              ? "選了 1 個。再多選一個會更好排。"
-              : `選了 ${pickedSlots.length} 個，很好安排，謝謝你 🙌`}
-        </p>
-      </section>
 
       <footer className="buyer-foot">
         <p>
@@ -515,14 +375,12 @@ export default function BuyerPicker({
 
       {/* 送出列固定在底部。勾選本來就即時存了，這顆按鈕是讓買方知道「我挑完了」，
           也讓阿坤知道可以開始安排帶看。 */}
-      {/* 帶看卡模式沒有「送出」這件事 —— 東西已經定了，他只需要選時間，
-          而時間是即時存的。留一顆送不出東西的按鈕只會讓人以為還沒完成。 */}
-      {!direct && rows.length > 0 && (
+      {rows.length > 0 && (
         <div className="buyer-submit-bar">
           <div>
             <b>{interested.length > 0 ? `想看 ${interested.length} 間` : "還沒挑"}</b>
             {/* 刻意不顯示「還有幾間沒選」。沒按到的不是待辦事項，就只是沒興趣而已。 */}
-            <span>{slots.length > 0 ? `　時間 ${pickedSlots.length} 個` : "　挑幾間都可以"}</span>
+            <span>　挑幾間都可以</span>
           </div>
           <button type="button" className="button" onClick={submit} disabled={busy === "submit"}>
             {busy === "submit" ? "送出中…" : submitted ? "重新送出" : "送出給" + PROFILE.alias}

@@ -62,8 +62,6 @@ export default async function BuyerTourPage({ params }: { params: Promise<{ toke
         title={tour.title}
         buyerName={tour.buyerName}
         submittedAt={tour.submittedAt}
-        mode={tour.mode}
-        timeSlots={tour.timeSlots}
         entries={visible.map((entry) => ({
           listingId: entry.listingId,
           choice: entry.buyerChoice,

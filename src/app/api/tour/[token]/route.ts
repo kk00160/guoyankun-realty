@@ -1,13 +1,6 @@
 import { bad, fail, ok, optionalText, readJson } from "@/lib/api";
 import { BUYER_CHOICES, type BuyerChoice, isTourOpen, tourClosedReason } from "@/lib/tour";
-import {
-  addBuyerTimeSlot,
-  getTourByToken,
-  markTourSubmitted,
-  patchTour,
-  setBuyerChoice,
-  setBuyerTimePick
-} from "@/lib/tour-store";
+import { getTourByToken, markTourSubmitted, patchTour, setBuyerChoice } from "@/lib/tour-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,28 +41,6 @@ export async function POST(request: Request, context: { params: Promise<{ token:
         if (name) await patchTour(tour.id, { buyerName: name });
       }
       return ok({ submitted: true });
-    }
-
-    // 買方勾一個候選時段。
-    if (body.action === "time") {
-      const slotId = optionalText(body.slotId, 32);
-      if (!slotId) return bad("缺少時段編號。");
-      const result = await setBuyerTimePick(tour.id, slotId, body.picked === true);
-      return ok({ slots: result.slots, missing: result.missing });
-    }
-
-    /**
-     * 買方自己加一個時段（你開的都不方便的時候）。
-     *
-     * 這是買方唯一能「主動提出」的東西，其餘欄位一概碰不到。
-     * 時間的合理性（不能是過去、不能太遠、上限 20 個）在 addBuyerTimeSlot 裡把關。
-     */
-    if (body.action === "add-time") {
-      const startsAt = optionalText(body.startsAt, 40);
-      if (!startsAt) return bad("缺少時間。");
-      const result = await addBuyerTimeSlot(tour.id, startsAt);
-      if (result.error) return bad(result.error);
-      return ok({ slots: result.slots });
     }
 
     const listingId = optionalText(body.listingId, 64);

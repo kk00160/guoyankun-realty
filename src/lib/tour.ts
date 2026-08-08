@@ -23,48 +23,9 @@ export const BUYER_CHOICE_LABEL: Record<BuyerChoice, string> = {
 
 export const BUYER_CHOICES: readonly BuyerChoice[] = ["pending", "interested", "rejected"];
 
-/**
- * 一個候選帶看時段。
- *
- * 你開幾個時段，買方在自己的連結上勾方便的那幾個。
- *
- * id 是短亂數，不是陣列索引 —— 買方在手機上勾選的同時，
- * 你可能正在後台刪掉某個時段，用索引對回來會整個錯位，
- * 結果是買方以為自己選了週六下午，你看到的是週日早上。
- */
-export type TourTimeSlot = {
-  id: string;
-  /** ISO 時間字串 */
-  startsAt: string;
-  /** 買方勾了沒 */
-  picked: boolean;
-  /**
-   * 這個時段是誰提的。
-   *
-   * agent：阿坤開的候選時段
-   * buyer：買方自己加的（阿坤開的都不方便的時候）
-   *
-   * 要分開是因為兩者的意義完全不同：阿坤開的代表「我這時候有空」，
-   * 買方加的代表「我只有這時候有空，你要想辦法」。混在一起看不出誰要遷就誰。
-   */
-  by: "agent" | "buyer";
-};
-
-/**
- * 帶看紀錄的模式。
- *
- * pick  ：買方自己勾想看／略過（還在篩物件的階段）
- * direct：已經談好要看哪幾間，直接給買方一張帶看卡
- *
- * 為什麼要分：已經約好的客人再看到「想看／略過」兩顆按鈕，
- * 會以為事情還沒定案，反而回頭再問一次。
- */
-export type TourMode = "pick" | "direct";
-
 export type Tour = {
   id: string;
   title: string;
-  mode: TourMode;
   buyerName: string | null;
   token: string;
   expiresAt: string;
@@ -75,55 +36,8 @@ export type Tour = {
   note: string | null;
   /** 買方按下「送出」的時間。null = 還在看。 */
   submittedAt: string | null;
-  /** 候選帶看時段。永遠依時間排好序。 */
-  timeSlots: TourTimeSlot[];
   createdAt: string;
 };
-
-/** 時段 id。夠短好讀，夠亂不會撞到。 */
-export function createSlotId() {
-  const bytes = new Uint8Array(4);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/** 買方看得懂的時段寫法：8/10（六）14:00 */
-export function formatSlot(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  const parts = new Intl.DateTimeFormat("zh-TW", {
-    timeZone: "Asia/Taipei",
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("month")}/${get("day")}（${get("weekday").replace("週", "")}）${get("hour")}:${get("minute")}`;
-}
-
-/** 資料庫裡的 jsonb 一律當成不可信，逐筆檢查後才放行。 */
-export function toTimeSlots(raw: unknown): TourTimeSlot[] {
-  if (!Array.isArray(raw)) return [];
-
-  return raw
-    .map((item) => {
-      const bag = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
-      const startsAt = typeof bag.startsAt === "string" ? bag.startsAt : "";
-      if (!startsAt || Number.isNaN(new Date(startsAt).getTime())) return null;
-      return {
-        id: typeof bag.id === "string" && bag.id ? bag.id : createSlotId(),
-        startsAt,
-        picked: bag.picked === true,
-        // 舊資料沒有這個欄位，一律當成阿坤開的。
-        by: bag.by === "buyer" ? ("buyer" as const) : ("agent" as const)
-      };
-    })
-    .filter((slot): slot is TourTimeSlot => slot !== null)
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-}
 
 export type TourItem = {
   id: string;
@@ -202,7 +116,6 @@ export function toTour(row: Record<string, unknown>): Tour {
   return {
     id: String(row.id),
     title: String(row.title ?? ""),
-    mode: row.mode === "direct" ? "direct" : "pick",
     buyerName: str(row.buyer_name),
     token: String(row.token ?? ""),
     expiresAt: String(row.expires_at ?? ""),
@@ -212,7 +125,6 @@ export function toTour(row: Record<string, unknown>): Tour {
     originLng: num(row.origin_lng),
     note: str(row.note),
     submittedAt: str(row.submitted_at),
-    timeSlots: toTimeSlots(row.time_slots),
     createdAt: String(row.created_at ?? "")
   };
 }

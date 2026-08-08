@@ -5,15 +5,7 @@ import { useState } from "react";
 import { buyerTourUrl } from "@/lib/buyer-link";
 import { formatPing, formatPrice, formatSeenAt, formatUnitPrice } from "@/lib/listings";
 import { mapDirectionsUrl, mapTarget } from "@/lib/route";
-import {
-  BUYER_CHOICE_LABEL,
-  type Tour,
-  type TourMode,
-  type TourTimeSlot,
-  formatSlot,
-  formatTourDate,
-  isTourOpen
-} from "@/lib/tour";
+import { BUYER_CHOICE_LABEL, type Tour, formatTourDate, isTourOpen } from "@/lib/tour";
 import type { TourEntry } from "@/lib/tour-store";
 
 type RouteResult = {
@@ -30,14 +22,10 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
-  const [slots, setSlots] = useState<TourTimeSlot[]>(tour.timeSlots);
-  const [newSlot, setNewSlot] = useState("");
-  const [mode, setMode] = useState<TourMode>(tour.mode);
 
   const interested = rows.filter((row) => row.buyerChoice === "interested").length;
   const rejected = rows.filter((row) => row.buyerChoice === "rejected").length;
   const pending = rows.filter((row) => row.buyerChoice === "pending").length;
-  const picked = slots.filter((slot) => slot.picked);
   /** 只有封面照的物件。全庫有 98.7% 是這樣，補過的才會有完整相簿。 */
   const thin = rows.filter((row) => (row.listing.images?.length ?? 0) <= 1);
 
@@ -122,31 +110,6 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
     }
   }
 
-  /** 切換「買方自己勾」與「直接給帶看卡」。 */
-  async function switchMode(next: TourMode) {
-    setBusy("mode");
-    setMessage("");
-    try {
-      const response = await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: next })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "切換失敗");
-      setMode(next);
-      setMessage(
-        next === "direct"
-          ? "已切成帶看卡：買方打開連結直接看到你排好的清單，不會再出現「想看／略過」。"
-          : "已切回買方勾選：買方可以自己挑想看哪幾間。"
-      );
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "切換失敗");
-    } finally {
-      setBusy("");
-    }
-  }
-
   async function saveNote(listingId: string, agentNote: string) {
     try {
       await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}/items`, {
@@ -177,50 +140,6 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
     } finally {
       setBusy("");
     }
-  }
-
-  /**
-   * 候選時段一律整份送出（不是「新增一個」）。
-   *
-   * 這樣後端才有辦法把買方已經勾好的狀態對回去 —— 見 /api/admin/tours/[id] 的說明。
-   * 送出的是 datetime-local 的字串，交給瀏覽器換算成當地時間再轉 ISO，
-   * 不要自己拼時區，那是最容易差八小時的地方。
-   */
-  async function saveSlots(next: TourTimeSlot[]) {
-    setBusy("slots");
-    setMessage("");
-    try {
-      const response = await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeSlots: next.map((slot) => ({ startsAt: slot.startsAt })) })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "時段沒存成功");
-      setSlots(payload.timeSlots ?? []);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "時段沒存成功");
-    } finally {
-      setBusy("");
-    }
-  }
-
-  function addSlot(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!newSlot) return;
-
-    const at = new Date(newSlot);
-    if (Number.isNaN(at.getTime())) {
-      setMessage("那個時間看不懂，請重選。");
-      return;
-    }
-    if (slots.some((slot) => slot.startsAt === at.toISOString())) {
-      setMessage("這個時段已經在清單裡了。");
-      return;
-    }
-
-    setNewSlot("");
-    void saveSlots([...slots, { id: "", startsAt: at.toISOString(), picked: false, by: "agent" }]);
   }
 
   async function copyLink() {
@@ -266,36 +185,9 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
           而畫面上完全沒有任何提示，只有買方看得到那個結果。 */}
       {thin.length > 0 && (
         <p className="alert-bar" role="alert">
-          <b>這 {thin.length} 間只有封面照，買方看不到內裝。</b>
-          　在專案目錄跑 <code>npm run fill</code> 補齊（一筆約 5 秒，這批大約 {Math.ceil((thin.length * 5) / 60)} 分鐘），
-          補完重新整理這一頁再把連結傳出去。
-        </p>
-      )}
-
-      {/* 模式決定買方點開連結看到什麼，所以放在連結正上方。 */}
-      <div className="mode-row">
-        <span className="mode-label">買方打開連結會看到：</span>
-        <button
-          type="button"
-          data-on={mode === "pick"}
-          onClick={() => switchMode("pick")}
-          disabled={busy === "mode"}
-        >
-          讓他自己勾想看哪幾間
-        </button>
-        <button
-          type="button"
-          data-on={mode === "direct"}
-          onClick={() => switchMode("direct")}
-          disabled={busy === "mode"}
-        >
-          直接給帶看卡（已經談好了）
-        </button>
-      </div>
-      {mode === "direct" && (
-        <p className="mode-hint">
-          帶看卡模式：買方看到的是你排好的清單，沒有「想看／略過」按鈕，也不用送出。
-          他還是可以選帶看時間。
+          <b>這 {thin.length} 間目前只有封面照。</b>
+          　照片會自動補（每 5 分鐘檢查一次，一筆約 5 秒，這批大約 {Math.ceil((thin.length * 5) / 60)} 分鐘），
+          等一下重新整理這一頁就會好，再把連結傳出去。
         </p>
       )}
 
@@ -308,61 +200,6 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
           換一把新鑰匙
         </button>
       </div>
-
-      {/* 預約帶看時間。你開幾個時段，買方在自己的連結上勾方便的那幾個。
-          放在買方連結底下，是因為順序就是「開時段 → 傳連結 → 等他勾」。 */}
-      <section className="slot-box">
-        <div className="slot-head">
-          <h2>預約帶看時間</h2>
-          <p>
-            開幾個你方便的時段，買方會在他的連結上一起勾。他也可以自己提一個時間，會標成「買方自己提的」。
-            {picked.length > 0 ? (
-              <b>　買方勾了 {picked.length} 個。</b>
-            ) : slots.length > 0 ? (
-              "　買方還沒勾。"
-            ) : (
-              ""
-            )}
-          </p>
-        </div>
-
-        <form className="slot-add" onSubmit={addSlot}>
-          <input
-            type="datetime-local"
-            value={newSlot}
-            onChange={(event) => setNewSlot(event.target.value)}
-            aria-label="新增候選時段"
-          />
-          <button type="submit" className="button-secondary" disabled={busy === "slots" || !newSlot}>
-            {busy === "slots" ? "存檔中…" : "新增時段"}
-          </button>
-        </form>
-
-        {slots.length > 0 ? (
-          <ul className="slot-list">
-            {slots.map((slot) => (
-              <li key={slot.id} data-picked={slot.picked}>
-                <span>{formatSlot(slot.startsAt)}</span>
-                {slot.by === "buyer" && <span className="slot-tag slot-tag-buyer">買方自己提的</span>}
-                {slot.picked && slot.by !== "buyer" && <span className="slot-tag">買方要這個</span>}
-                <button
-                  type="button"
-                  onClick={() => saveSlots(slots.filter((row) => row.id !== slot.id))}
-                  disabled={busy === "slots"}
-                  aria-label={`移除 ${formatSlot(slot.startsAt)}`}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="slot-empty">
-            還沒開時段。就算不開，買方那邊還是可以自己提一個時間 —— 只是你先開幾個，
-            他從裡面挑會更快。
-          </p>
-        )}
-      </section>
 
       <div className="filter-row">
         <button type="button" className="button" onClick={() => planRoute("interested")} disabled={busy === "route"}>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   type Listing,
   type ListingStatus,
@@ -31,7 +31,27 @@ export default function ListingResults({
   result: ListingPage;
   tours: { id: string; title: string }[];
 }) {
-  const [rows, setRows] = useState(result.rows);
+  /**
+   * 卡片一律以伺服器送來的 result.rows 為準，只疊上「這一輪在畫面上改過的狀態」。
+   *
+   * ⚠️ 這裡以前寫成 useState(result.rows) —— 那是一個很難發現的錯：
+   * useState 只會在第一次渲染時採用參數，之後伺服器送新的搜尋結果進來，
+   * React 重用同一個元件實例，rows 就永遠停在第一次那批。
+   * 症狀是「換關鍵字按搜尋，網址和筆數都變了，卡片卻沒換」——
+   * 而且完全不會報錯，只有你自己盯著卡片才發現不對。
+   *
+   * 改成從 props 推導之後，換條件就一定跟著換；本地改過狀態的那幾筆用 Map 疊上去。
+   */
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, ListingStatus>>({});
+  const rows = useMemo(
+    () =>
+      result.rows.map((row) => {
+        const next = statusOverrides[row.id];
+        if (!next) return row;
+        return { ...row, status: next, reviewReasons: next === "active" ? [] : row.reviewReasons };
+      }),
+    [result.rows, statusOverrides]
+  );
   const [selected, setSelected] = useState<string[]>([]);
   const [tourId, setTourId] = useState(tours[0]?.id ?? "");
   const [busy, setBusy] = useState("");
@@ -64,13 +84,7 @@ export default function ListingResults({
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "更新失敗");
 
-      setRows((current) =>
-        current.map((row) =>
-          row.id === id
-            ? { ...row, status: next, reviewReasons: next === "active" ? [] : row.reviewReasons }
-            : row
-        )
-      );
+      setStatusOverrides((current) => ({ ...current, [id]: next }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "更新失敗");
     } finally {

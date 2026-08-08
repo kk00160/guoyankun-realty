@@ -19,8 +19,6 @@ import {
   type BuyerChoice,
   type Tour,
   type TourItem,
-  type TourTimeSlot,
-  createSlotId,
   createTourToken,
   defaultExpiry,
   isValidTokenFormat,
@@ -468,7 +466,6 @@ export async function patchTour(
     title?: string;
     buyerName?: string | null;
     status?: Tour["status"];
-    mode?: Tour["mode"];
     originLabel?: string | null;
     originLat?: number | null;
     originLng?: number | null;
@@ -480,7 +477,6 @@ export async function patchTour(
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.buyerName !== undefined) row.buyer_name = patch.buyerName;
   if (patch.status !== undefined) row.status = patch.status;
-  if (patch.mode !== undefined) row.mode = patch.mode;
   if (patch.originLabel !== undefined) row.origin_label = patch.originLabel;
   if (patch.originLat !== undefined) row.origin_lat = patch.originLat;
   if (patch.originLng !== undefined) row.origin_lng = patch.originLng;
@@ -617,112 +613,6 @@ export async function markTourSubmitted(tourId: string) {
   if (error) console.error("[tour] 標記送出失敗：", error.message);
 }
 
-// ---------------------------------------------------------------
-// 預約帶看時間
-// ---------------------------------------------------------------
-
-/**
- * 欄位還沒建的時候，Postgres／PostgREST 回的是一句英文技術訊息，
- * 看到的人只會覺得「壞了」。這裡換成一句知道要做什麼的話。
- */
-function timeSlotError(message: string) {
-  if (/time_slots/i.test(message) && /(does not exist|could not find|schema cache)/i.test(message)) {
-    return new Error(
-      "資料庫還沒有 time_slots 這個欄位。" +
-        "到 Supabase 的 SQL Editor 跑一次 supabase/2026-08-07-times-and-leads.sql 就會好。"
-    );
-  }
-  return new Error(`存帶看時間失敗：${message}`);
-}
-
-/** 你開的候選時段。整份覆蓋，順序由 toTimeSlots 統一排。 */
-export async function setTourTimeSlots(id: string, slots: TourTimeSlot[]) {
-  const { error } = await db()
-    .from("tours")
-    .update({ time_slots: slots as unknown as TourUpdate["time_slots"] })
-    .eq("id", id);
-  if (error) throw timeSlotError(error.message);
-}
-
-/**
- * 買方勾選／取消一個時段。
- *
- * 用「讀出來、改一格、整份寫回去」而不是直接改 jsonb 裡的某一格：
- * Supabase 的 update 沒有部分更新 jsonb 陣列的乾淨寫法，
- * 而這個陣列最多幾筆，整份寫回去成本可以忽略。
- *
- * 極端情況下你正在後台改時段、買方同時在勾選，會有一方被覆蓋。
- * 這個機率低到不值得為它加鎖 —— 真的撞到，買方重按一次就好。
- */
-/**
- * 買方自己加一個時段。
- *
- * 為什麼買方也要能提時間：阿坤開的那幾個時段有可能都不方便。
- * 只給「勾或不勾」的話，買方唯一的表達方式是全部不勾 ——
- * 而「全部不勾」跟「還沒看」在後台長得一模一樣，等於這個人就這樣安靜地卡住了。
- *
- * 加進來的時段預設就是勾起來的（他既然特地打了時間，當然是他要的），
- * 並標記 by: "buyer"，讓阿坤一眼看出這是對方提的、需要他配合。
- */
-export async function addBuyerTimeSlot(
-  tourId: string,
-  startsAt: string
-): Promise<{ error?: string; slots: TourTimeSlot[] }> {
-  const tour = await getTour(tourId);
-  if (!tour) throw new Error("找不到這筆帶看紀錄。");
-
-  /**
-   * 檢查不通過時「回傳」錯誤而不是丟出來。
-   *
-   * 丟出來的話會被 api.ts 的 fail() 收成一句「系統忙碌，請稍後重試」——
-   * 那是給資料庫爆掉用的。買方選了一個過去的時間，該看到的是
-   * 「那個時間已經過了」，而不是叫他等一下再試。
-   */
-  const at = new Date(startsAt);
-  if (Number.isNaN(at.getTime())) return { error: "那個時間看不懂，請重選一次。", slots: tour.timeSlots };
-
-  // 過去與太遙遠的時間都擋掉。允許回推一小時，免得時區或時鐘差幾分鐘就被拒絕。
-  const now = Date.now();
-  if (at.getTime() < now - 60 * 60 * 1000) {
-    return { error: "那個時間已經過了，請選之後的時間。", slots: tour.timeSlots };
-  }
-  if (at.getTime() > now + 180 * 24 * 60 * 60 * 1000) {
-    return { error: "時間有點太遠了，請選半年內的。", slots: tour.timeSlots };
-  }
-
-  const iso = at.toISOString();
-  const existing = tour.timeSlots.find((slot) => slot.startsAt === iso);
-  if (existing) {
-    // 已經有一模一樣的時間，就當成「勾起來」，不要多生一個重複的選項。
-    const result = await setBuyerTimePick(tourId, existing.id, true);
-    return { slots: result.slots };
-  }
-
-  if (tour.timeSlots.length >= 20) {
-    return { error: "時間選項太多了，直接打給我比較快。", slots: tour.timeSlots };
-  }
-
-  const next = [...tour.timeSlots, { id: createSlotId(), startsAt: iso, picked: true, by: "buyer" as const }];
-  await setTourTimeSlots(tourId, next);
-  return { slots: (await getTour(tourId))?.timeSlots ?? next };
-}
-
-export async function setBuyerTimePick(tourId: string, slotId: string, picked: boolean) {
-  const tour = await getTour(tourId);
-  if (!tour) throw new Error("找不到這筆帶看紀錄。");
-
-  const slots = tour.timeSlots;
-  if (!slots.some((slot) => slot.id === slotId)) {
-    // 你剛好把那個時段刪掉了。不要當成錯誤炸掉買方的畫面。
-    return { slots, missing: true };
-  }
-
-  const next = slots.map((slot) => (slot.id === slotId ? { ...slot, picked } : slot));
-  await setTourTimeSlots(tourId, next);
-  return { slots: next, missing: false };
-}
-
-/** 買方在手機上按「想看／略過」。這是唯一一個不需要密碼就能寫入的動作。 */
 export async function setBuyerChoice(tourId: string, listingId: string, choice: BuyerChoice) {
   const { error } = await db()
     .from("tour_items")

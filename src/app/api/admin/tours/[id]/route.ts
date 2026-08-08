@@ -1,6 +1,6 @@
 import { bad, fail, ok, optionalNumber, optionalText, readJson } from "@/lib/api";
-import { type TourStatus, type TourTimeSlot, createSlotId, defaultExpiry } from "@/lib/tour";
-import { deleteTour, getTour, patchTour, rotateTourToken, setTourTimeSlots } from "@/lib/tour-store";
+import { type TourStatus, defaultExpiry } from "@/lib/tour";
+import { deleteTour, getTour, patchTour, rotateTourToken } from "@/lib/tour-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,47 +19,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (body.rotateToken === true) {
       const token = await rotateTourToken(id);
       return ok({ token });
-    }
-
-    /**
-     * 候選帶看時段。整份覆蓋。
-     *
-     * 前端只送 startsAt，id 與 picked 在這裡對回原本那筆 ——
-     * 不然你新增一個時段就會把買方已經勾好的全部洗掉。
-     */
-    if (Array.isArray(body.timeSlots)) {
-      if (body.timeSlots.length > 20) return bad("時段最多 20 個，太多買方也挑不動。");
-
-      const before = new Map(tour.timeSlots.map((slot) => [slot.startsAt, slot]));
-      const seen = new Set<string>();
-      const slots: TourTimeSlot[] = [];
-
-      for (const raw of body.timeSlots) {
-        const startsAt = typeof raw?.startsAt === "string" ? raw.startsAt : "";
-        const at = new Date(startsAt);
-        if (!startsAt || Number.isNaN(at.getTime())) return bad("有一個時段的時間看不懂。");
-        if (seen.has(at.toISOString())) continue; // 同一個時間重複填就吃掉
-        seen.add(at.toISOString());
-
-        const kept = before.get(startsAt) ?? before.get(at.toISOString());
-        slots.push({
-          id: kept?.id ?? createSlotId(),
-          startsAt: at.toISOString(),
-          picked: kept?.picked ?? false,
-          // 「誰提的」也要一起留著，不然買方自己加的時段會被改寫成阿坤開的。
-          by: kept?.by ?? "agent"
-        });
-      }
-
-      await setTourTimeSlots(id, slots);
-      return ok({ timeSlots: (await getTour(id))?.timeSlots ?? [] });
-    }
-
-    // 切換模式：pick（買方自己勾）／ direct（直接給帶看卡）
-    if (typeof body.mode === "string") {
-      if (body.mode !== "pick" && body.mode !== "direct") return bad("不支援的模式。");
-      await patchTour(id, { mode: body.mode });
-      return ok({ mode: body.mode });
     }
 
     if (typeof body.status === "string") {

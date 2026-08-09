@@ -54,12 +54,29 @@ function featureOf(pathname: string): Feature {
     return "tour";
   }
 
-  // 線上預約。/api/appointment（單數，客戶送出用）與 /api/appointments（複數，後台用）都涵蓋。
+  /**
+   * 線上預約的「後台側」：預約總表、狀態更新、Google 日曆綁定。
+   *
+   * 刻意不受 BOOKING_ENABLED 管制，因為要先設定好才談得上對外開放 ——
+   * 綁定日曆得先進後台，若後台也被開關擋住就變成雞生蛋。
+   * 而且開關關著的時候，你正需要進來看有沒有殘留的預約要處理。
+   *
+   * 沒有開關不等於沒有防護：這些路徑一律要密碼（見 isAdminPath），
+   * 只有 google/callback 例外，它靠 state cookie 驗證。
+   */
   if (
-    pathname.startsWith("/card/booking") ||
-    pathname.startsWith("/api/appointment") ||
-    pathname.startsWith("/admin/appointments")
+    pathname.startsWith("/admin/appointments") ||
+    pathname.startsWith("/api/appointments") ||
+    pathname.startsWith("/api/appointment/google")
   ) {
+    return "console";
+  }
+
+  /**
+   * 線上預約的「客戶側」：選時段的頁面與送出用的 API。
+   * 這才是 BOOKING_ENABLED 真正要管的東西 —— 要不要對客戶開放。
+   */
+  if (pathname.startsWith("/card/booking") || pathname.startsWith("/api/appointment")) {
     return "booking";
   }
 

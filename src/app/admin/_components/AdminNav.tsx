@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AdminIcon from "@/app/admin/_components/AdminIcon";
 import type { AdminEntry } from "@/lib/admin-nav";
 
 /**
@@ -29,10 +30,19 @@ export default function AdminNav({ tabs, brand }: { tabs: AdminEntry[]; brand: s
           <span className="console-dot" aria-hidden="true" />
           {brand}
         </Link>
-        {/* HTTP Basic 沒有真正的登出，這條會讓瀏覽器重新問一次帳密（見 middleware）。 */}
-        <a className="console-logout" href="/admin/logout">
-          登出
-        </a>
+        <div className="console-bar-actions">
+          {/* 開新分頁，不要把後台這一頁換掉 ——
+              後台是工作中的畫面（篩到一半的條件、排到一半的順序），
+              點一下「看官網」就整個沒了的話，下次就不敢點了。
+              也刻意不用 next/link：那是給站內導覽用的，這裡是要真的跳出去看客戶看到的樣子。 */}
+          <a className="console-logout" href="/" target="_blank" rel="noreferrer">
+            看官網 ↗
+          </a>
+          {/* HTTP Basic 沒有真正的登出，這條會讓瀏覽器重新問一次帳密（見 middleware）。 */}
+          <a className="console-logout" href="/admin/logout">
+            登出
+          </a>
+        </div>
       </div>
 
       <nav className="console-tabs" aria-label="後台系統">
@@ -43,8 +53,8 @@ export default function AdminNav({ tabs, brand }: { tabs: AdminEntry[]; brand: s
             data-on={isActive(pathname, tab.href)}
             aria-current={isActive(pathname, tab.href) ? "page" : undefined}
           >
-            <span className="console-tab-icon" aria-hidden="true">
-              {tab.icon}
+            <span className="console-tab-icon">
+              <AdminIcon name={tab.icon} />
             </span>
             <span>{tab.label}</span>
           </Link>

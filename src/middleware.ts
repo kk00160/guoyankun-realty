@@ -86,10 +86,21 @@ function featureOf(pathname: string): Feature {
  * 靠的是猜不到、可撤銷、有到期日的 token。
  */
 function isAdminPath(pathname: string) {
+  /**
+   * ⚠️ 例外：Google 授權完成後的轉址。
+   *
+   * Google 是用瀏覽器把使用者送回來的，不會帶 HTTP Basic 的帳密，
+   * 放進受保護路徑會被 401 擋掉，授權永遠完成不了。
+   * 它的防護是 state cookie（見該路由），不是密碼。
+   */
+  if (pathname.startsWith("/api/appointment/google/callback")) return false;
+
   return (
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/api/appointments")
+    pathname.startsWith("/api/appointments") ||
+    // 發起授權必須是你本人，否則任何人都能對你的帳號啟動綁定流程。
+    pathname.startsWith("/api/appointment/google/auth")
   );
 }
 

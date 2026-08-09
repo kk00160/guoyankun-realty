@@ -94,6 +94,36 @@ type LeadRow = {
   updated_at: string;
 };
 
+/** 線上預約。對應 supabase/2026-08-09-appointments-google-calendar.sql */
+type AppointmentRow = {
+  id: string;
+  case_no: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  line_id: string | null;
+  meet_type: string;
+  intent: string[];
+  urgency: string | null;
+  note: string | null;
+  slot_at: string;
+  slot_end: string;
+  status: string;
+  google_event_id: string | null;
+  source: string;
+  agent_note: string | null;
+  created_at: string;
+  updated_at: string | null;
+  cancelled_at: string | null;
+};
+
+/** 預約系統的 key-value 設定（Google refresh token、日曆 ID、標題樣板…）。 */
+type AppointmentConfigRow = {
+  k: string;
+  v: string | null;
+  updated_at: string;
+};
+
 type CrawlRunRow = {
   id: string;
   started_at: string;
@@ -119,6 +149,7 @@ type Table<Row, Required extends keyof Row = never> = {
 export type ListingUpdate = Partial<ListingRow>;
 export type TourUpdate = Partial<TourRow>;
 export type LeadUpdate = Partial<LeadRow>;
+export type AppointmentUpdate = Partial<AppointmentRow>;
 
 export type Database = {
   public: {
@@ -128,6 +159,8 @@ export type Database = {
       tour_items: Table<TourItemRow, "tour_id" | "listing_id">;
       crawl_runs: Table<CrawlRunRow>;
       leads: Table<LeadRow, "name" | "phone">;
+      appointments: Table<AppointmentRow, "case_no" | "name" | "phone" | "slot_at">;
+      appointment_config: Table<AppointmentConfigRow, "k">;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

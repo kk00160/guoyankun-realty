@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AdminIcon from "@/app/admin/_components/AdminIcon";
+import NotifyCard from "@/app/admin/_components/NotifyCard";
 import { ADMIN_SYSTEMS } from "@/lib/admin-nav";
+import { isLineConfigured } from "@/lib/notify-line";
 import { listAppointments } from "@/lib/appointment-store";
 import { isDbConfigured } from "@/lib/db";
 import { BOOKING_ENABLED, TOUR_ENABLED } from "@/lib/feature-flags";
@@ -122,8 +125,8 @@ export default async function ConsolePage() {
             return (
               <section key={system.id} className="console-card" data-off={!system.enabled}>
                 <header>
-                  <span className="console-card-icon" aria-hidden="true">
-                    {system.icon}
+                  <span className="console-card-icon">
+                    <AdminIcon name={system.icon} />
                   </span>
                   <div>
                     <h2>{system.title}</h2>
@@ -151,7 +154,8 @@ export default async function ConsolePage() {
                     </Link>
                     {system.links.map((link) => (
                       <Link key={link.href} className="button-secondary" href={link.href}>
-                        {link.icon} {link.label}
+                        <AdminIcon name={link.icon} />
+                        {link.label}
                       </Link>
                     ))}
                   </div>
@@ -166,6 +170,14 @@ export default async function ConsolePage() {
               </section>
             );
           })}
+
+          {/* 通知設定放在系統卡片後面，是刻意的：它不是一個「系統」，
+              是這些系統共用的一件事，但又必須看得到目前到底通不通。
+
+              ⚠️ 不要拿 TOUR_ENABLED 把它包起來。來客通知不歸帶看助手管
+              （/api/lead 本來就刻意沒有開關），帶看關掉時來客照樣會通知，
+              這時候把卡片藏起來，等於讓畫面說了一件不是事實的事。 */}
+          <NotifyCard configured={isLineConfigured()} bookingEnabled={BOOKING_ENABLED} />
         </div>
 
         <p className="console-foot">

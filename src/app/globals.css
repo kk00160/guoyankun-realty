@@ -25,6 +25,26 @@
   --surface-soft: #f7f4fb;
   --shadow: 0 12px 36px rgba(45, 16, 74, 0.12);
   --font: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+
+  /* ---- 首頁專用的語意色（下面 .theme-latte 會整組換掉）----
+     這些以前是寫死在各條規則裡的色碼。抽出來不是為了好看，
+     是因為換主題時「寫死的淺色文字」是最容易漏掉的東西：
+     底色換了、字沒換，那行字就這樣安靜地消失，畫面不會報錯。
+     全部集中在這裡之後，換一套配色只要改這一段。 */
+  --tint-soft: #f1e9f8; /* 淡色標籤底（hero 小標、區域標籤、服務圖示底） */
+  --hero-bg: linear-gradient(155deg, #e7f8ec 0%, #fff 45%, #f1e9f8 100%);
+  --nav-bg: rgba(255, 255, 255, 0.93); /* 置頂導覽列，半透明疊在內容上 */
+  --brand-green-deep: #0e7a2b; /* 漸層的另一端，要比 brand-green 深才有層次 */
+  --cta-shadow: 0 10px 24px rgba(20, 168, 59, 0.28);
+  --cta-shadow-lg: 0 12px 28px rgba(20, 168, 59, 0.42);
+  --footer-bg: #1b0930;
+  --footer-ink: rgba(255, 255, 255, 0.78);
+  --ok-soft: #eefbf1; /* 送出成功的提示底色 */
+  --placeholder: #9b93a6;
+  --topbar-bg: #1b0930;
+  --topbar-ink: #ffffff;
+  --topbar-ink-soft: #d9e6f5;
+  --topbar-hover: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -33,7 +53,9 @@
 
 html {
   min-width: 320px;
-  background: var(--surface-soft);
+  /* 這裡不能用 var(--surface-soft) —— 那是 :root 的淡紫，
+     而 .theme-latte 掛在 body 上，改不到 html。捲過頭時露出的就是這一層。 */
+  background: #faf6f0;
 }
 
 body {
@@ -64,11 +86,16 @@ a {
   min-height: 100vh;
 }
 
+/* 名片站的頂列。
+   ⚠️ 底色與文字色一定要用同一組變數決定，不可以一邊吃變數、一邊寫死 #fff。
+   這裡原本是 `background: var(--navy-950); color: #fff`（深底白字），
+   換成溫奶茶之後 --navy-950 變成暖白，就成了白底白字，整條列直接消失，
+   而且畫面不會有任何錯誤 —— 實際發生過（2026-08-09 電子名片頁）。 */
 .topbar {
   height: 64px;
   padding: 0 24px;
-  background: var(--navy-950);
-  color: #fff;
+  background: var(--topbar-bg);
+  color: var(--topbar-ink);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -101,15 +128,15 @@ a {
 
 .topnav a {
   text-decoration: none;
-  color: #d9e6f5;
+  color: var(--topbar-ink-soft);
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 14px;
 }
 
 .topnav a:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--topbar-ink);
+  background: var(--topbar-hover);
 }
 
 .button,
@@ -178,7 +205,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.93);
+  background: var(--nav-bg);
   backdrop-filter: saturate(180%) blur(10px);
   border-bottom: 1px solid var(--line);
 }
@@ -236,7 +263,7 @@ a {
 
 /* ---- Hero ---- */
 .landing-hero {
-  background: linear-gradient(155deg, #e7f8ec 0%, #fff 45%, #f1e9f8 100%);
+  background: var(--hero-bg);
   overflow: hidden;
 }
 
@@ -257,7 +284,7 @@ a {
   margin: 0 0 20px;
   padding: 6px 14px;
   border-radius: 999px;
-  background: #f1e9f8;
+  background: var(--tint-soft);
   color: var(--brand-purple);
   font-weight: 800;
   font-size: 13px;
@@ -289,7 +316,7 @@ a {
 }
 
 .hero-badge {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   padding: 8px 16px;
@@ -320,7 +347,7 @@ a {
 .cta-primary {
   background: var(--brand-green);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(20, 168, 59, 0.28);
+  box-shadow: var(--cta-shadow);
 }
 
 .cta-primary:hover {
@@ -333,7 +360,7 @@ a {
 }
 
 .cta-outline:hover {
-  background: #f1e9f8;
+  background: var(--tint-soft);
 }
 
 .cta-line {
@@ -360,7 +387,7 @@ a {
 
 .area-section,
 .service-section {
-  background: #fff;
+  background: var(--surface);
 }
 
 .achieve-section,
@@ -401,7 +428,7 @@ a {
 
 /* ---- 服務區域 ---- */
 .area-main {
-  background: linear-gradient(135deg, var(--brand-green), #0e7a2b);
+  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-deep));
   color: #fff;
   border-radius: 16px;
   padding: 36px;
@@ -429,7 +456,7 @@ a {
 }
 
 .area-list {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 36px;
@@ -452,7 +479,7 @@ a {
 }
 
 .chip-list li {
-  background: #f1e9f8;
+  background: var(--tint-soft);
   color: var(--brand-purple);
   font-weight: 800;
   font-size: 14px;
@@ -468,7 +495,7 @@ a {
 }
 
 .achieve-card {
-  background: #fff;
+  background: var(--surface);
   border-top: 4px solid var(--brand-green);
   box-shadow: var(--shadow);
 }
@@ -489,7 +516,7 @@ a {
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: #f1e9f8;
+  background: var(--tint-soft);
   font-size: 26px;
   margin-bottom: 18px;
 }
@@ -532,7 +559,7 @@ a {
   width: min(680px, 100%);
   margin: 40px auto 0;
   padding: 36px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
   box-shadow: var(--shadow);
@@ -571,7 +598,7 @@ a {
 
 .lead-row input::placeholder,
 .lead-row textarea::placeholder {
-  color: #9b93a6;
+  color: var(--placeholder);
 }
 
 .lead-row input:focus,
@@ -580,7 +607,7 @@ a {
   outline: 2px solid var(--brand-green);
   outline-offset: 1px;
   border-color: transparent;
-  background: #fff;
+  background: var(--surface);
 }
 
 .lead-grid {
@@ -600,7 +627,7 @@ a {
   font-size: 17px;
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(20, 168, 59, 0.28);
+  box-shadow: var(--cta-shadow);
 }
 
 .lead-submit:hover {
@@ -614,7 +641,7 @@ a {
 
 .lead-result {
   border: 1px solid var(--brand-green);
-  background: #eefbf1;
+  background: var(--ok-soft);
   border-radius: 14px;
   padding: 20px;
   display: grid;
@@ -624,7 +651,7 @@ a {
 .lead-result-title {
   margin: 0;
   font-weight: 900;
-  color: #0e7a2b;
+  color: var(--teal-600);
 }
 
 .lead-result-step {
@@ -637,7 +664,7 @@ a {
 .lead-result-text {
   margin: 0;
   padding: 14px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
   font-family: inherit;
@@ -702,8 +729,8 @@ a {
 
 /* ---- 頁尾與浮動 LINE ---- */
 .landing-footer {
-  background: var(--navy-950);
-  color: rgba(255, 255, 255, 0.78);
+  background: var(--footer-bg);
+  color: var(--footer-ink);
   padding: 38px 0;
 }
 
@@ -727,7 +754,7 @@ a {
   font-weight: 800;
   font-size: 15px;
   text-decoration: none;
-  box-shadow: 0 12px 28px rgba(20, 168, 59, 0.42);
+  box-shadow: var(--cta-shadow-lg);
 }
 
 .line-float::before {
@@ -1152,14 +1179,153 @@ a {
 }
 
 /* ---------------------------------------------------------------
+   配色：溫奶茶（2026-08-08 彥坤在三個方向裡挑的）
+   暖白底、白卡片、大圓角、深綠當行動色，深色與螢光綠整套退場。
+
+   套在哪：
+     後台   src/app/admin/layout.tsx 的外框（/admin 底下每一頁自動吃到）
+     買方頁 /tour/[token] 與 /tour/[token]/plan 的 <main>
+
+   為什麼包在容器裡，而不是直接改 :root：
+   名片站首頁用的是同一組變數（--gold-500、--ink、--line…），
+   改 :root 等於連首頁一起換掉，而那一頁的紫綠是他的 CIS，不能動。
+   包成容器之後，容器裡幾十處 var(--gold-500) 自動變成暖綠，外面原封不動。
+
+   ⚠️ 新增後台頁面什麼都不用做。新增買方頁要記得加上這個 class，
+      不然那一頁會變成半新半舊的樣子（底色是舊的、按鈕是新的）。
+   --------------------------------------------------------------- */
+
+.theme-latte {
+  /* 自己鋪滿底色。掛在 body 上時這是整站的底；掛在後台／買方頁的容器上時，
+     它保證內容短的頁面（例如帶看單）下緣不會露出外層的底色。 */
+  min-height: 100vh;
+  background: var(--a-bg);
+
+  /* 這個主題自己的語彙。深色時期那些寫死的十六進位色都換成這幾個。 */
+  --a-bg: #faf6f0;
+  --a-card: #ffffff;
+  --a-inset: #f6f1e9;
+  --a-line: #efe8dd;
+  --a-line-strong: #ddd2c2;
+  --a-ink: #33291f;
+  --a-muted: #8a7a66;
+  --a-accent-soft: #eef2ea;
+
+  /* 大圓角是這個方向的主角，不要調小 —— 24 與 16 的落差是刻意的：
+     卡片圓、卡片裡的小方塊比較不圓，層次才出得來。 */
+  --a-radius: 24px;
+  --a-radius-sm: 16px;
+
+  /* 全站共用的變數，在這個容器裡改寫成暖色版。 */
+  --gold-500: #3d6b4f;
+  --gold-400: #33593f;
+  --gold-on-dark: #3d6b4f; /* 已經沒有深底了，名字留著只為了不動到四十幾處引用 */
+  --teal-600: #3d6b4f;
+  --green-600: #3d6b4f;
+  --line: #efe8dd;
+  --ink: #33291f;
+  --ink-soft: #8a7a66;
+  --surface: #ffffff;
+  --surface-soft: #faf6f0;
+  --navy-800: #33291f;
+  --navy-700: #ddd2c2;
+  --navy-950: #faf6f0;
+
+  /* 這個方向是平的，不用陰影堆層次。留著紫調的舊陰影會在暖白底上發灰。 */
+  --shadow: none;
+
+  /* ---- 首頁那組語意色的暖色版 ---- */
+  --brand-green: #3d6b4f;
+  --brand-green-deep: #2c4f3a;
+  /* CIS 紫在這裡沒有對應色，改對應「深暖墨」。
+     它被拿來當文字色與外框色（.cta-outline、.chip-list li、卡片標題），
+     所以必須是「在暖白底上讀得清楚的深色」，不能挑一個好看的中間色。 */
+  --brand-purple: #33291f;
+
+  --tint-soft: #f6f1e9;
+  --hero-bg: linear-gradient(155deg, #eef2ea 0%, #ffffff 46%, #faf6f0 100%);
+  --nav-bg: rgba(250, 246, 240, 0.92);
+  --ok-soft: #eef2ea;
+  --placeholder: #a8977f;
+
+  /* 綠色螢光陰影在暖白底上會像沒對焦。這個方向不用陰影撐層次。 */
+  --cta-shadow: none;
+  --cta-shadow-lg: none;
+
+  /* ⚠️ 頁尾一定要自己指定，不能讓它繼續吃 --navy-950。
+     那個變數在這裡是暖白（#faf6f0），而頁尾的字是白的 —— 整段頁尾會直接消失，
+     而且畫面不會有任何錯誤。上次換後台時就是這樣弄不見一整排數字的。 */
+  --footer-bg: #33291f;
+  --footer-ink: rgba(255, 255, 255, 0.82);
+  --topbar-bg: #ffffff;
+  --topbar-ink: #33291f;
+  --topbar-ink-soft: #8a7a66;
+  --topbar-hover: #f6f1e9;
+}
+
+/* 首頁的卡片跟著後台的大圓角走，不然只有顏色像、形狀還是舊的。 */
+.theme-latte .achieve-card,
+.theme-latte .service-card,
+.theme-latte .area-main,
+.theme-latte .area-list {
+  border-radius: var(--a-radius);
+}
+
+.theme-latte .lead-form {
+  border-radius: var(--a-radius);
+}
+
+.theme-latte .service-icon,
+.theme-latte .lead-result,
+.theme-latte .lead-row input,
+.theme-latte .lead-row select,
+.theme-latte .lead-row textarea {
+  border-radius: var(--a-radius-sm);
+}
+
+/* 暖白底上白卡片不畫外框（跟後台同一條規則），但 .service-card 的底色
+   跟區塊底色一樣，沒有外框會整個糊掉 —— 所以它改用內凹底色來分層。 */
+.theme-latte .service-card {
+  background: var(--a-inset);
+  border-color: transparent;
+}
+
+/* 按鈕一律做成藥丸形。共用的 .button 是方的（首頁在用），這裡蓋掉。 */
+.theme-latte .button,
+.theme-latte .button-secondary,
+.theme-latte .button-danger,
+.theme-latte .icon-button {
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.theme-latte .button-secondary {
+  background: var(--a-accent-soft);
+  border-color: transparent;
+  color: #3d6b4f;
+}
+
+.theme-latte .button-secondary:hover {
+  background: #e4ebe0;
+  border-color: transparent;
+}
+
+/* 輸入框也跟著圓，而且用淡底取代邊框 —— 一整排框線正是「醜」的來源。 */
+.theme-latte input,
+.theme-latte select,
+.theme-latte textarea {
+  border-radius: var(--a-radius-sm);
+}
+
+/* ---------------------------------------------------------------
    控台導覽列（所有後台頁面共用，見 src/app/admin/layout.tsx）
    --------------------------------------------------------------- */
 
 .console-bar {
-  background: var(--navy-950);
-  color: #fff;
-  border-bottom: 3px solid var(--gold-500);
-  padding: 12px 20px 0;
+  background: var(--a-bg);
+  color: var(--a-ink);
+  padding: 18px 20px 0;
 }
 
 .console-bar-top {
@@ -1167,38 +1333,45 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .console-brand {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-weight: 900;
-  font-size: 17px;
-  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--a-ink);
   text-decoration: none;
 }
 
 .console-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--gold-500);
 }
 
+.console-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .console-logout {
   font-size: 13px;
-  color: #d9e6f5;
+  white-space: nowrap;
+  color: var(--a-muted);
   text-decoration: none;
-  padding: 7px 14px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--a-card);
 }
 
 .console-logout:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--a-inset);
+  color: var(--a-ink);
 }
 
 /* 分頁列。手機上會變多，所以讓它橫向捲而不是擠成兩三行。 */
@@ -1206,7 +1379,7 @@ a {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 12px;
+  padding-bottom: 18px;
   scrollbar-width: none;
 }
 
@@ -1214,40 +1387,41 @@ a {
   display: none;
 }
 
-/* 每個系統一個圖塊。做得比一般連結大一點，是因為這排在手機上要用拇指點。 */
+/* 每個系統一顆藥丸。做得比一般連結大一點，是因為這排在手機上要用拇指點。 */
 .console-tabs a {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
-  min-height: 46px;
+  min-height: 42px;
   padding: 0 18px;
-  border-radius: 12px;
-  font-size: 15px;
+  border-radius: 999px;
+  font-size: 14px;
   font-weight: 700;
-  color: #d9e6f5;
+  color: #6b5c49;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--a-card);
   white-space: nowrap;
 }
 
+/* 圖示用線條圖，不用表情符號。
+   表情符號在每台裝置上長得都不一樣（而且一律很卡通），
+   是整套後台看起來最廉價的一個細節。見 AdminIcon.tsx。 */
 .console-tab-icon {
+  display: inline-flex;
   font-size: 17px;
   line-height: 1;
 }
 
 .console-tabs a:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: var(--a-inset);
+  color: var(--a-ink);
 }
 
-/* 目前所在的圖塊反白，跟其他圖塊拉開對比，一眼知道自己在哪。 */
+/* 目前所在的分頁填滿主色，一眼知道自己在哪。 */
 .console-tabs a[data-on="true"] {
-  background: #fff;
-  border-color: #fff;
-  color: var(--navy-950);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  background: var(--gold-500);
+  color: #fff;
 }
 
 /* ---------------------------------------------------------------
@@ -1265,7 +1439,7 @@ a {
 
 .console-hero p {
   margin: 0;
-  color: #9fb3d1;
+  color: var(--a-muted);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -1276,14 +1450,21 @@ a {
   gap: 16px;
 }
 
+/* 橫跨整列的卡片。給「不是系統、但是系統共用的設定」用（例如 LINE 通知）——
+   讓它擠成第三或第四張半高的卡片，看起來像排版漏掉了。 */
+.console-card-wide {
+  grid-column: 1 / -1;
+}
+
+/* 白卡片放在暖白底上。刻意不畫邊框 —— 底色跟卡片的落差已經夠了，
+   再加一圈線只會讓整頁看起來被格子切碎，那正是舊版最悶的地方。 */
 .console-card {
-  background: #101d38;
-  border: 1px solid #22355e;
-  border-radius: 14px;
-  padding: 20px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .console-card[data-off="true"] {
@@ -1296,39 +1477,49 @@ a {
   align-items: flex-start;
 }
 
+/* 圖示裝在一個淡綠色的圓角方塊裡，比一個裸露的符號有份量。 */
 .console-card-icon {
-  font-size: 22px;
-  line-height: 1.3;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: var(--a-accent-soft);
+  color: var(--gold-500);
+  display: grid;
+  place-items: center;
+  font-size: 19px;
 }
 
 .console-card h2 {
   margin: 0 0 5px;
-  font-size: 19px;
+  font-size: 18px;
 }
 
 .console-card header p {
   margin: 0;
   font-size: 13px;
-  color: #9fb3d1;
+  color: var(--a-muted);
   line-height: 1.75;
 }
 
+/* 固定兩欄。用 auto-fit 的話四個數字會排成 3+1，最後一格孤零零掉在下一行，
+   看起來就是「參差不齊」—— 這是彥坤第一次抱怨版面時指的東西。 */
 .console-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin: 0;
 }
 
 .console-stats div {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  padding: 10px 12px;
+  background: var(--a-inset);
+  border-radius: var(--a-radius-sm);
+  padding: 12px 14px;
 }
 
 .console-stats dt {
   font-size: 12px;
-  color: #9fb3d1;
+  color: var(--a-muted);
   margin-bottom: 3px;
 }
 
@@ -1343,7 +1534,7 @@ a {
 .console-off {
   margin: 0;
   font-size: 13px;
-  color: #9fb3d1;
+  color: var(--a-muted);
   line-height: 1.8;
 }
 
@@ -1362,14 +1553,14 @@ a {
 .console-foot {
   margin: 26px 0 0;
   font-size: 13px;
-  color: #7d8fab;
+  color: var(--a-muted);
 }
 
 /* 關鍵字被系統怎麼拆的，顯示在結果數量下面。 */
 .result-explain {
   margin: 6px 0 0;
   font-size: 13px;
-  color: #9fb0c7;
+  color: var(--a-muted);
   line-height: 1.7;
 }
 
@@ -1394,9 +1585,8 @@ a {
 }
 
 .lead-card {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
@@ -1439,14 +1629,14 @@ a {
 .lead-meta {
   margin: 0;
   font-size: 13px;
-  color: #9fb0c7;
+  color: var(--a-muted);
 }
 
 .lead-message {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 12px 14px;
+  border-radius: var(--a-radius-sm);
+  background: var(--a-inset);
   font-size: 14px;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -1459,8 +1649,8 @@ a {
 
 .admin-page {
   min-height: 100vh;
-  background: #0a1326;
-  color: #f5f8fc;
+  background: var(--a-bg);
+  color: var(--a-ink);
 }
 
 .admin-shell {
@@ -1484,13 +1674,13 @@ a {
 
 .admin-heading p {
   margin: 6px 0 0;
-  color: #9fb0c7;
+  color: var(--a-muted);
 }
 
 .admin-heading .button-secondary {
-  background: #101e37;
-  border-color: #2b405e;
-  color: #dbe8f8;
+  background: var(--a-card);
+  border-color: transparent;
+  color: var(--a-ink);
 }
 
 .stat-grid {
@@ -1502,22 +1692,21 @@ a {
 
 .stat {
   min-height: 104px;
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 8px;
-  padding: 15px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
+  padding: 18px;
 }
 
 .stat-label {
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 13px;
 }
 
 .stat-value {
   margin-top: 8px;
-  color: #fff;
+  color: var(--a-ink);
   font-size: 30px;
-  font-weight: 900;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1536,9 +1725,9 @@ a {
 
 .filter-row a {
   padding: 7px 13px;
-  border: 1px solid #2b405e;
+  border: 1px solid var(--a-line-strong);
   border-radius: 999px;
-  color: #aebfd4;
+  color: var(--a-muted);
   text-decoration: none;
   font-size: 14px;
   font-weight: 800;
@@ -1562,7 +1751,7 @@ a {
 .filter-row a.button-secondary {
   min-height: 42px;
   padding: 10px 16px;
-  border-radius: 6px;
+  border-radius: var(--a-radius-sm);
   font-size: 15px;
   font-weight: 800;
 }
@@ -1596,9 +1785,8 @@ a {
 }
 
 .appointment {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 8px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 18px;
 }
 
@@ -1627,43 +1815,42 @@ a {
 }
 
 .tag {
-  border: 1px solid #355071;
+  border: none;
   border-radius: 999px;
-  color: #c4d3e5;
-  padding: 4px 9px;
+  background: var(--a-inset);
+  color: #6b5c49;
+  padding: 5px 11px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .tag.high {
-  color: #ffd98b;
-  border-color: #896728;
-  background: #342914;
+  color: #8a5a1e;
+  background: #f6ecd9;
 }
 
 .tag.mid {
-  color: #9de8ef;
-  border-color: #246871;
-  background: #102e33;
+  color: #2f6b72;
+  background: #e2eff0;
 }
 
 .tag.low {
-  color: #c3ccda;
+  color: var(--a-muted);
 }
 
 .tag.confirmed {
-  color: #a6dcff;
-  border-color: #315f83;
+  color: #2c5c7d;
+  background: #e4eef5;
 }
 
 .tag.completed {
-  color: #9be1bd;
-  border-color: #2f6f50;
+  color: #2f6b4c;
+  background: #e4f0e9;
 }
 
 .tag.cancelled {
-  color: #ffb2bb;
-  border-color: #7b3b43;
+  color: #97323f;
+  background: #f8e6e8;
 }
 
 .appointment-contact {
@@ -1672,17 +1859,17 @@ a {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  color: #aebfd4;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
 .appointment-contact strong {
-  color: #fff;
+  color: var(--a-ink);
   font-size: 17px;
 }
 
 .appointment-contact a {
-  color: #7dd9e1;
+  color: var(--gold-500);
   text-decoration: none;
 }
 
@@ -1695,32 +1882,32 @@ a {
 
 .detail-box,
 .suggestion-box {
-  border: 1px solid #243955;
-  border-radius: 6px;
-  padding: 13px;
+  border: none;
+  border-radius: var(--a-radius-sm);
+  padding: 14px 16px;
   line-height: 1.7;
 }
 
 .detail-box {
-  color: #c2d0e0;
+  background: var(--a-inset);
+  color: var(--a-ink);
 }
 
 .suggestion-box {
-  border-color: #5c4a22;
-  background: #211d14;
-  color: #f3d995;
+  background: #f6ecd9;
+  color: #6b4a18;
 }
 
 .box-label {
   display: block;
   margin-bottom: 4px;
-  color: #8296af;
+  color: var(--a-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .suggestion-box .box-label {
-  color: #bd9b4d;
+  color: #8a5a1e;
 }
 
 .appointment-actions {
@@ -1733,11 +1920,11 @@ a {
 .appointment-actions button,
 .appointment-actions a {
   min-height: 36px;
-  padding: 7px 11px;
-  border-radius: 5px;
-  border: 1px solid #355071;
-  background: #162942;
-  color: #d9e6f5;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--a-inset);
+  color: var(--a-ink);
   cursor: pointer;
   text-decoration: none;
   font-size: 13px;
@@ -1752,9 +1939,9 @@ a {
 .empty-state {
   padding: 48px 20px;
   text-align: center;
-  border: 1px dashed #355071;
-  color: #9fb0c7;
-  border-radius: 8px;
+  border: 1px dashed var(--a-line);
+  color: var(--a-muted);
+  border-radius: var(--a-radius);
 }
 
 .loading-line {
@@ -1832,8 +2019,8 @@ a {
 }
 
 /* =====================================================
-   帶看助手：後台（案源庫 / 帶看單）
-   沿用上面後台的深色系（#0a1326 底、#101e37 卡片、#243955 框線）
+   帶看助手：後台（買方配案 / 帶看日記）
+   沿用上面後台的暖白系（var(--a-bg) 底、var(--a-card) 白卡片、var(--a-inset) 內嵌塊）
    ===================================================== */
 
 .stat-grid-4 {
@@ -1842,34 +2029,32 @@ a {
 
 .alert-bar {
   margin: 0 0 16px;
-  padding: 12px 16px;
-  border: 1px solid #7a2c38;
-  background: #2a1119;
-  border-radius: 8px;
-  color: #ffc9d1;
+  padding: 14px 18px;
+  background: #f8e6e8;
+  border-radius: var(--a-radius-sm);
+  color: #8f2f3b;
   font-weight: 700;
   line-height: 1.7;
 }
 
 .form-message {
   margin: 0 0 16px;
-  padding: 11px 15px;
-  border: 1px solid #2b405e;
-  background: #101e37;
-  border-radius: 8px;
-  color: #dbe8f8;
+  padding: 13px 17px;
+  background: var(--a-accent-soft);
+  border-radius: var(--a-radius-sm);
+  color: #2f5a41;
   line-height: 1.7;
 }
 
 .empty-note,
 .note-line {
-  color: #9fb0c7;
+  color: var(--a-muted);
   line-height: 1.8;
   margin: 18px 0 0;
 }
 
 .note-line {
-  border-top: 1px solid #243955;
+  border-top: 1px solid var(--a-line);
   padding-top: 16px;
   font-size: 14px;
 }
@@ -1877,10 +2062,9 @@ a {
 /* --- 資料庫尚未設定的說明 --- */
 
 .setup-notice {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
-  padding: 26px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
+  padding: 28px;
   line-height: 1.9;
 }
 
@@ -1899,17 +2083,15 @@ a {
 }
 
 .setup-notice code {
-  background: #0a1326;
-  border: 1px solid #243955;
-  border-radius: 4px;
+  background: var(--a-inset);
+  border-radius: var(--a-radius-sm);
   padding: 1px 6px;
   font-size: 13px;
 }
 
 .setup-notice pre {
-  background: #0a1326;
-  border: 1px solid #243955;
-  border-radius: 6px;
+  background: var(--a-inset);
+  border-radius: var(--a-radius-sm);
   padding: 14px;
   overflow-x: auto;
   font-size: 13px;
@@ -1923,28 +2105,28 @@ a {
 
 .setup-warn {
   border-left: 3px solid #bd3d4a;
+  border-radius: 0;
   padding-left: 14px;
-  color: #ffc9d1;
+  color: #8f2f3b;
 }
 
 .setup-detail {
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
 /* --- 手動新增表單 --- */
 
 .manual-form {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
-  padding: 20px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
+  padding: 24px;
   margin-bottom: 18px;
 }
 
 .manual-form-hint {
   margin: 0 0 14px;
-  color: #9fb0c7;
+  color: var(--a-muted);
   line-height: 1.7;
 }
 
@@ -1961,7 +2143,7 @@ a {
   gap: 6px;
   font-size: 13px;
   font-weight: 800;
-  color: #aebfd4;
+  color: var(--a-muted);
 }
 
 /* 標籤文字包成一個元素，「必填」才會跟標題同一行。
@@ -1992,7 +2174,7 @@ a {
 
 /* 刪除這種不可復原的動作用紅字，跟旁邊的一般操作分開。 */
 .listing-actions .link-danger {
-  color: #ff8a8a;
+  color: #bd3d4a;
 }
 
 .manual-grid .required {
@@ -2006,10 +2188,10 @@ a {
 .filter-row select,
 .select-bar select {
   min-height: 40px;
-  border-radius: 6px;
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #f5f8fc;
+  border-radius: var(--a-radius-sm);
+  border: none;
+  background: var(--a-inset);
+  color: var(--a-ink);
   padding: 8px 11px;
   font: inherit;
   font-weight: 500;
@@ -2032,9 +2214,8 @@ a {
 }
 
 .listing-card {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -2042,7 +2223,7 @@ a {
 }
 
 .listing-card[data-status="needs_review"] {
-  border-color: #7a2c38;
+  border-color: #e8c4c8;
 }
 
 .listing-card[data-status="archived"] {
@@ -2066,7 +2247,7 @@ a {
   gap: 8px;
   font-size: 13px;
   font-weight: 800;
-  color: #aebfd4;
+  color: var(--a-muted);
   cursor: pointer;
 }
 
@@ -2080,8 +2261,8 @@ a {
   width: 100%;
   height: 168px;
   object-fit: cover;
-  border-radius: 6px;
-  background: #0a1326;
+  border-radius: var(--a-radius-sm);
+  background: var(--a-bg);
 }
 
 .listing-price {
@@ -2099,7 +2280,7 @@ a {
 }
 
 .listing-meta dt {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 12px;
 }
 
@@ -2115,16 +2296,16 @@ a {
 }
 
 .tag-warn {
-  border-color: #7a2c38;
-  color: #ffc9d1;
+  border-color: #e8c4c8;
+  color: #8f2f3b;
 }
 
 .review-box {
-  border: 1px solid #7a2c38;
-  background: #2a1119;
-  border-radius: 6px;
+  border: 1px solid #e8c4c8;
+  background: #f8e6e8;
+  border-radius: var(--a-radius-sm);
   padding: 12px 14px;
-  color: #ffc9d1;
+  color: #8f2f3b;
   font-size: 13px;
   line-height: 1.7;
 }
@@ -2137,7 +2318,7 @@ a {
 .listing-foot {
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid #243955;
+  border-top: 1px solid var(--a-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2146,7 +2327,7 @@ a {
 }
 
 .listing-seen {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 12px;
 }
 
@@ -2160,10 +2341,10 @@ a {
 .listing-actions a,
 .listing-actions button,
 .tour-link-row button {
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #dbe8f8;
-  border-radius: 6px;
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  color: var(--a-ink);
+  border-radius: var(--a-radius-sm);
   padding: 6px 11px;
   font: inherit;
   font-size: 13px;
@@ -2194,8 +2375,8 @@ a {
   gap: 12px;
   flex-wrap: wrap;
   border: 1px solid var(--gold-500);
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 14px 18px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
   font-weight: 800;
@@ -2209,9 +2390,8 @@ a {
 }
 
 .tour-card {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 18px;
   display: grid;
   gap: 12px;
@@ -2227,7 +2407,7 @@ a {
 }
 
 .tour-card h3 a {
-  color: #f5f8fc;
+  color: var(--a-ink);
   text-decoration: none;
 }
 
@@ -2244,7 +2424,7 @@ a {
 
 .tour-sub {
   margin: 6px 0 0;
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
@@ -2258,21 +2438,20 @@ a {
 
 .tour-link-row code {
   flex: 1 1 320px;
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  border-radius: 6px;
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  border-radius: var(--a-radius-sm);
   padding: 9px 12px;
   font-size: 13px;
-  color: #aebfd4;
+  color: var(--a-muted);
   overflow-wrap: anywhere;
 }
 
 /* --- 路線結果 --- */
 
 .route-box {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 18px;
   margin-bottom: 18px;
 }
@@ -2292,7 +2471,7 @@ a {
 }
 
 .route-note {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 13px;
 }
 
@@ -2308,9 +2487,8 @@ a {
   grid-template-columns: 48px 1fr 200px;
   gap: 16px;
   align-items: start;
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 16px;
 }
 
@@ -2319,19 +2497,69 @@ a {
 }
 
 .tour-item[data-choice="interested"] {
-  border-color: #1f6b3a;
+  border-color: var(--gold-500);
 }
 
+/* 站號與上下箭頭疊成一直排：↑ / 站號 / ↓，
+   按鈕就長在它排的那個位置旁邊，不用另外找一區操作。 */
 .tour-item-order {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.order-number {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  border: 1px solid #2b405e;
+  border: 1px solid var(--a-line-strong);
   display: grid;
   place-items: center;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: var(--gold-on-dark);
+}
+
+.order-move {
+  width: 40px;
+  height: 26px;
+  border-radius: var(--a-radius-sm);
+  border: 1px solid var(--a-line);
+  background: var(--a-inset);
+  color: var(--a-ink);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.order-move:hover:not(:disabled) {
+  background: var(--gold-500);
+  border-color: var(--gold-500);
+  color: #fff;
+}
+
+/* 第一筆的 ↑ 與最後一筆的 ↓ 保留位置不隱藏 ——
+   藏起來的話整排箭頭會上下錯開，看起來像壞掉。 */
+.order-move:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.order-hint {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--a-muted);
+}
+
+.order-state {
+  margin-left: 10px;
+  font-weight: 800;
+  color: var(--a-muted);
+}
+
+.order-state.is-done {
+  color: var(--gold-500);
 }
 
 .tour-item-body h3 {
@@ -2341,7 +2569,7 @@ a {
 
 .tour-item-meta {
   margin: 0 0 4px;
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -2353,15 +2581,15 @@ a {
   margin-top: 10px;
   font-size: 12px;
   font-weight: 800;
-  color: #7f92ab;
+  color: var(--a-muted);
 }
 
 .tour-item-note input {
   min-height: 38px;
-  border-radius: 6px;
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #f5f8fc;
+  border-radius: var(--a-radius-sm);
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  color: var(--a-ink);
   padding: 8px 11px;
   font: inherit;
   font-weight: 500;
@@ -2376,11 +2604,11 @@ a {
 
 .choice-badge {
   border-radius: 999px;
-  border: 1px solid #355071;
+  border: 1px solid var(--a-line);
   padding: 5px 12px;
   font-size: 13px;
   font-weight: 800;
-  color: #c4d3e5;
+  color: var(--a-ink);
 }
 
 .choice-badge[data-choice="interested"] {
@@ -2390,8 +2618,8 @@ a {
 }
 
 .choice-badge[data-choice="rejected"] {
-  border-color: #7a2c38;
-  color: #ffc9d1;
+  border-color: #e8c4c8;
+  color: #8f2f3b;
 }
 
 @media (max-width: 900px) {
@@ -2410,6 +2638,12 @@ a {
 
   .tour-item {
     grid-template-columns: 40px 1fr;
+  }
+
+  /* 手指比滑鼠粗。桌機 26px 高按得很準，手機上就會想按 ↓ 卻按到中間的站號 ——
+     而按錯的結果是順序被改掉，還存進去了。 */
+  .order-move {
+    height: 36px;
   }
 
   .tour-item-side {
@@ -2510,11 +2744,11 @@ a {
 .buyer-progress {
   display: inline-block;
   border-radius: 999px;
-  background: var(--navy-800);
+  background: var(--gold-500);
   color: #fff;
-  padding: 6px 14px;
+  padding: 7px 16px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .buyer-list {
@@ -2525,10 +2759,8 @@ a {
 
 .buyer-card {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--a-radius, 24px);
   overflow: hidden;
-  box-shadow: var(--shadow);
   transition: opacity 0.15s ease;
 }
 
@@ -2537,8 +2769,7 @@ a {
 }
 
 .buyer-card[data-choice="interested"] {
-  border-color: var(--gold-500);
-  box-shadow: 0 0 0 1px var(--gold-500), var(--shadow);
+  box-shadow: 0 0 0 2px var(--gold-500);
 }
 
 /* 照片放在卡片最上面而且要夠大 —— 買方第一眼看的是房子，不是坪數。
@@ -2938,10 +3169,9 @@ a {
 
 /* 資料庫暫時讀不到時的畫面。跟「還沒設定」的 .setup-notice 是兩回事。 */
 .db-error-notice {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
-  padding: 26px;
+  background: var(--a-card);
+  border-radius: var(--a-radius, 24px);
+  padding: 28px;
   line-height: 1.9;
 }
 
@@ -2952,7 +3182,7 @@ a {
 
 .db-error-notice p {
   margin: 0 0 16px;
-  color: #c4d3e5;
+  color: var(--a-ink);
 }
 
 .db-error-actions {
@@ -2963,13 +3193,13 @@ a {
 }
 
 .db-error-notice details {
-  border-top: 1px solid #243955;
+  border-top: 1px solid var(--a-line);
   padding-top: 12px;
 }
 
 .db-error-notice summary {
   cursor: pointer;
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
@@ -2977,7 +3207,7 @@ a {
   margin: 10px 0 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
-  color: #ffc9d1;
+  color: #8f2f3b;
   overflow-wrap: anywhere;
 }
 
@@ -2987,9 +3217,8 @@ a {
    ===================================================== */
 
 .filter-panel {
-  border: 1px solid #243955;
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   margin-bottom: 18px;
 }
 
@@ -3021,11 +3250,11 @@ a {
 }
 
 .filter-toggle {
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #dbe8f8;
-  border-radius: 6px;
-  padding: 6px 13px;
+  border: none;
+  background: var(--a-inset);
+  color: var(--a-ink);
+  border-radius: 999px;
+  padding: 8px 16px;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -3033,7 +3262,7 @@ a {
 }
 
 .filter-body {
-  border-top: 1px solid #243955;
+  border-top: 1px solid var(--a-line);
   padding: 16px 18px 18px;
 }
 
@@ -3042,8 +3271,8 @@ a {
   grid-template-columns: 56px 1fr;
   gap: 12px;
   align-items: start;
-  padding: 9px 0;
-  border-bottom: 1px solid #1b2c47;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--a-line);
 }
 
 .filter-row-block:last-of-type {
@@ -3051,7 +3280,7 @@ a {
 }
 
 .filter-label {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 14px;
   font-weight: 800;
   padding-top: 6px;
@@ -3071,11 +3300,11 @@ a {
 }
 
 .chip {
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #c4d3e5;
-  border-radius: 6px;
-  padding: 7px 12px;
+  border: none;
+  background: var(--a-inset);
+  color: #6b5c49;
+  border-radius: 999px;
+  padding: 8px 14px;
   font: inherit;
   font-size: 14px;
   cursor: pointer;
@@ -3084,27 +3313,27 @@ a {
 }
 
 .chip:hover {
-  border-color: #4a648c;
+  background: #ece3d6;
+  color: var(--a-ink);
 }
 
 .chip[data-on="true"] {
   background: var(--gold-500);
-  border-color: var(--gold-500);
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .chip-any[data-on="true"] {
-  background: transparent;
-  border-color: var(--gold-500);
-  color: var(--gold-on-dark);
+  background: var(--a-accent-soft);
+  color: var(--gold-500);
+  font-weight: 700;
 }
 
 .filter-custom {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 13px;
   margin-left: 4px;
 }
@@ -3112,10 +3341,10 @@ a {
 .filter-custom input {
   width: 82px;
   min-height: 34px;
-  border-radius: 6px;
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #f5f8fc;
+  border-radius: var(--a-radius-sm);
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  color: var(--a-ink);
   padding: 6px 9px;
   font: inherit;
   font-size: 14px;
@@ -3124,10 +3353,10 @@ a {
 .filter-keyword {
   flex: 1 1 280px;
   min-height: 38px;
-  border-radius: 6px;
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #f5f8fc;
+  border-radius: var(--a-radius-sm);
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  color: var(--a-ink);
   padding: 8px 12px;
   font: inherit;
 }
@@ -3137,7 +3366,7 @@ a {
   gap: 10px;
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #243955;
+  border-top: 1px solid var(--a-line);
 }
 
 .result-head {
@@ -3147,7 +3376,7 @@ a {
   gap: 12px;
   margin-bottom: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #243955;
+  border-bottom: 1px solid var(--a-line);
   flex-wrap: wrap;
 }
 
@@ -3156,7 +3385,7 @@ a {
 }
 
 .result-count {
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
@@ -3166,7 +3395,7 @@ a {
   justify-content: center;
   gap: 14px;
   margin-top: 22px;
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
@@ -3203,7 +3432,7 @@ a {
   margin: 10px 0 4px;
   font-size: 16px;
   line-height: 1.5;
-  color: #f5f8fc;
+  color: var(--a-ink);
 }
 
 .listing-open:hover h3 {
@@ -3219,13 +3448,13 @@ a {
   padding: 3px 10px;
   font-size: 12px;
   font-weight: 800;
-  color: #dbe8f8;
+  color: var(--a-ink);
 }
 
 .listing-more {
   display: block;
   font-size: 12px;
-  color: #7f92ab;
+  color: var(--a-muted);
 }
 
 .listing-open:hover .listing-more {
@@ -3238,8 +3467,8 @@ a {
   bottom: 16px;
   margin-top: 18px;
   border: 1px solid var(--gold-500);
-  background: #101e37;
-  border-radius: 10px;
+  background: var(--a-card);
+  border-radius: var(--a-radius);
   padding: 16px 18px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
 }
@@ -3249,7 +3478,7 @@ a {
 }
 
 .made-link span {
-  color: #9fb0c7;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
@@ -3262,9 +3491,9 @@ a {
 
 .made-link-row code {
   flex: 1 1 300px;
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  border-radius: 6px;
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  border-radius: var(--a-radius-sm);
   padding: 10px 12px;
   font-size: 13px;
   color: var(--gold-on-dark);
@@ -3273,13 +3502,13 @@ a {
 
 .made-link-note {
   margin: 12px 0 0;
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 13px;
   line-height: 1.7;
 }
 
 .select-bar-or {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 13px;
   font-weight: 500;
 }
@@ -3299,9 +3528,9 @@ a {
   width: min(1080px, 100%);
   max-height: 90vh;
   overflow-y: auto;
-  background: #101e37;
-  border: 1px solid #2b405e;
-  border-radius: 12px;
+  background: var(--a-card);
+  border: 1px solid var(--a-line-strong);
+  border-radius: var(--a-radius);
 }
 
 .detail-head {
@@ -3312,8 +3541,8 @@ a {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px;
-  background: #101e37;
-  border-bottom: 1px solid #243955;
+  background: var(--a-card);
+  border-bottom: 1px solid var(--a-line);
   z-index: 1;
 }
 
@@ -3324,10 +3553,10 @@ a {
 }
 
 .detail-close {
-  border: 1px solid #2b405e;
-  background: #0a1326;
-  color: #dbe8f8;
-  border-radius: 6px;
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-bg);
+  color: var(--a-ink);
+  border-radius: var(--a-radius-sm);
   width: 34px;
   height: 34px;
   flex-shrink: 0;
@@ -3357,8 +3586,8 @@ a {
      不然規格表會被推到看不見的地方，又變回「只有照片」那個老問題。 */
   max-height: 56vh;
   object-fit: cover;
-  border-radius: 8px;
-  background: #0a1326;
+  border-radius: var(--a-radius-sm);
+  background: var(--a-bg);
   display: block;
 }
 
@@ -3367,8 +3596,8 @@ a {
   place-content: center;
   gap: 6px;
   text-align: center;
-  color: #7f92ab;
-  border: 1px dashed #2b405e;
+  color: var(--a-muted);
+  border: 1px dashed var(--a-line-strong);
 }
 
 .detail-photo-empty small {
@@ -3423,7 +3652,7 @@ a {
   width: 78px;
   height: 58px;
   border: 2px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--a-radius-sm);
   overflow: hidden;
   padding: 0;
   background: none;
@@ -3451,7 +3680,7 @@ a {
 
 .detail-specs {
   margin: 0 0 14px;
-  border-top: 1px solid #243955;
+  border-top: 1px solid var(--a-line);
 }
 
 .detail-specs > div {
@@ -3459,11 +3688,11 @@ a {
   grid-template-columns: 78px 1fr;
   gap: 10px;
   padding: 9px 0;
-  border-bottom: 1px solid #1b2c47;
+  border-bottom: 1px solid var(--a-line);
 }
 
 .detail-specs dt {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 14px;
 }
 
@@ -3474,7 +3703,7 @@ a {
 }
 
 .detail-source {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 13px;
   margin: 0 0 14px;
 }
@@ -3510,8 +3739,8 @@ a {
   gap: 24px;
   flex-wrap: wrap;
   padding: 14px 20px;
-  border-bottom: 1px solid #243955;
-  background: #0d1a30;
+  border-bottom: 1px solid var(--a-line);
+  background: var(--a-inset);
 }
 
 .detail-highlights .detail-price {
@@ -3527,7 +3756,7 @@ a {
 }
 
 .detail-highlights dt {
-  color: #7f92ab;
+  color: var(--a-muted);
   font-size: 12px;
 }
 
@@ -3546,9 +3775,9 @@ a {
   margin: 0 0 12px;
   padding: 9px 12px;
   border-left: 3px solid var(--gold-500);
-  background: #0a1326;
+  background: var(--a-bg);
   border-radius: 0 6px 6px 0;
-  color: #c4d3e5;
+  color: var(--a-ink);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -3654,19 +3883,20 @@ a {
 }
 
 .buyer-tags span {
-  border: 1px solid var(--line);
+  border: none;
   border-radius: 999px;
-  padding: 3px 10px;
+  background: var(--a-inset, #f6f1e9);
+  padding: 5px 12px;
   font-size: 12px;
-  color: var(--ink-soft);
+  color: #6b5c49;
 }
 
 .buyer-more {
   width: 100%;
-  min-height: 40px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
+  min-height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: var(--a-inset, #f6f1e9);
   color: var(--teal-600);
   font: inherit;
   font-weight: 800;
@@ -3674,26 +3904,53 @@ a {
   margin-bottom: 10px;
 }
 
+/* 規格表左右兩欄並排。
+   一列一項的話，光是一間房子就有 11 列 —— 四站排下來要捲很久，
+   而每一列右邊都空著一大半。兩欄並排之後高度直接砍一半。 */
 .buyer-specs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
   margin: 0 0 12px;
   border-top: 1px solid var(--line);
 }
 
+/* 標籤欄壓到 52px、間距收到 6px，是為了讓「4房2廳4衛」這種五個字的值
+   在 375px 的手機上還能待在同一行。差幾個 px 就會折行，折了之後左右兩欄
+   的高度對不齊，看起來反而比一列一項還亂。 */
 .buyer-specs > div {
   display: grid;
-  grid-template-columns: 84px 1fr;
-  gap: 10px;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 6px;
   padding: 9px 0;
   border-bottom: 1px solid var(--line);
 }
 
+/* 項數是奇數時，最後一項自己占滿一整列，右邊才不會留一個缺角。
+   剛好最後一項是「位置」—— 門牌本來就是最長的那一個，占滿一列正好。 */
+.buyer-specs > div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 520px) {
+  .buyer-specs {
+    column-gap: 24px;
+  }
+
+  .buyer-specs > div {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 10px;
+  }
+}
+
 .buyer-specs dt {
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .buyer-specs dd {
   margin: 0;
+  font-size: 14px;
   font-weight: 700;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
@@ -3712,7 +3969,7 @@ a {
   padding: 14px 18px;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  box-shadow: 0 -8px 24px rgba(45, 16, 74, 0.12);
+  box-shadow: 0 -8px 24px rgba(51, 41, 31, 0.1);
 }
 
 .buyer-submit-bar b {
@@ -3732,10 +3989,9 @@ a {
 }
 
 .buyer-done {
-  border: 1px solid var(--gold-500);
-  background: #f2fbf5;
-  border-radius: 10px;
-  padding: 16px 18px;
+  background: var(--a-accent-soft, #eef2ea);
+  border-radius: var(--a-radius-sm, 16px);
+  padding: 18px 20px;
   margin-bottom: 12px;
 }
 
@@ -3758,13 +4014,13 @@ a {
 }
 
 /* 買方已送出的提示 */
+/* 這條只出現在後台的帶看紀錄頁，所以跟著後台一起換成暖色。 */
 .submitted-bar {
   margin: 0 0 16px;
-  padding: 12px 16px;
-  border: 1px solid #1f6b3a;
-  background: #0f2a1a;
-  border-radius: 8px;
-  color: var(--gold-on-dark);
+  padding: 14px 18px;
+  background: var(--a-accent-soft, #eef2ea);
+  border-radius: var(--a-radius-sm, 16px);
+  color: #2f5a41;
   font-weight: 700;
   line-height: 1.7;
 }
@@ -3773,4 +4029,240 @@ a {
   border-color: var(--gold-500);
   background: var(--gold-500);
   color: #fff;
+}
+
+/* =====================================================
+   買方的導航與行程
+   ===================================================== */
+
+/* 「導航到這一站」。只出現在行程頁 /tour/[token]/plan —— 挑選頁刻意沒有導航。
+   做成一整條看得見的按鈕，不是藏在句尾的小字連結 ——
+   行程定了之後買方真的會做的事就是「這間在哪、怎麼去」。 */
+.buyer-nav-link {
+  display: block;
+  text-align: center;
+  min-height: 46px;
+  line-height: 46px;
+  border-radius: 8px;
+  border: 1px solid var(--teal-600);
+  background: var(--surface);
+  color: var(--teal-600);
+  font-weight: 800;
+  text-decoration: none;
+  margin: 0 0 6px;
+}
+
+.buyer-nav-link:hover {
+  background: var(--teal-600);
+  color: #fff;
+}
+
+/* 導航會把人帶到多精準的地方（社區名／門牌／只有座標）。
+   這行不要拿掉：同名建案確實存在，把該有的路名印在按鈕旁邊，
+   導航開起來對不上時買方當場就看得出來。 */
+.buyer-nav-hint {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 挑選頁上方的行程摘要。完整版在 /tour/[token]/plan。 */
+.buyer-plan {
+  border-radius: var(--a-radius, 24px);
+  background: var(--surface);
+  padding: 20px 22px;
+  margin: 0 0 18px;
+}
+
+.buyer-plan h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.buyer-plan-note {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.buyer-plan-list {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.buyer-plan-list li {
+  line-height: 1.7;
+}
+
+.buyer-plan-list b {
+  display: block;
+  color: var(--ink);
+}
+
+.buyer-plan-list span {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+/* 行程頁：一站一張大卡片，照片在上、資訊在下。 */
+.buyer-stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.buyer-stop {
+  border-radius: var(--a-radius, 24px);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.buyer-stop-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 16px 10px;
+}
+
+.buyer-stop-head h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.buyer-stop-order {
+  flex: none;
+  border-radius: 999px;
+  background: var(--navy-800);
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* 帶看紀錄頁上「這條是挑選連結、行程連結在帶看單那一頁」的說明。 */
+.tour-link-note {
+  margin: 8px 0 16px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* --- 訊息通知：會通知哪幾件事 --- */
+
+.notify-events {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.notify-events li {
+  background: var(--a-inset);
+  border-radius: var(--a-radius-sm);
+  padding: 12px 14px;
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+}
+
+.notify-events b {
+  color: var(--a-ink);
+  font-size: 14px;
+}
+
+.notify-events span {
+  color: var(--a-muted);
+}
+
+/* 還沒開的那一項要看得出來是灰的，但不要藏起來 ——
+   「這件事目前不會通知你」正是最需要被看到的資訊。 */
+.notify-events li[data-on="false"] {
+  opacity: 0.5;
+}
+
+.notify-events li[data-on="true"] b::before {
+  content: "● ";
+  color: var(--gold-500);
+}
+
+/* ---- 預約：案件編號與 Google 日曆卡 ---- */
+.case-no {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.calendar-card {
+  margin-bottom: 20px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-card-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.calendar-desc {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.calendar-desc code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.calendar-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.calendar-note.ok   { background: #eefbf1; color: #0e7a2b; }
+.calendar-note.warn { background: #fdf3e7; color: #9a5b12; }
+
+.calendar-card .button,
+.calendar-card .button-secondary {
+  justify-self: start;
 }

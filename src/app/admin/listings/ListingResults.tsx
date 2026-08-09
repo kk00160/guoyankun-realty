@@ -18,6 +18,19 @@ import type { ListingPage } from "@/lib/tour-store";
 import ListingDetail from "./ListingDetail";
 
 /**
+ * 先把某一張照片的大圖抓進瀏覽器快取。
+ *
+ * 只丟出去不等結果：這是「順便先拿」，抓不到就抓不到，
+ * 絕對不能因為預載失敗而影響點開卡片這件事。
+ * 同一個網址抓第二次瀏覽器會自己走快取，不用自己記已經抓過哪些。
+ */
+function prefetchPhoto(url: string | undefined) {
+  if (!url || typeof window === "undefined") return;
+  const img = new Image();
+  img.src = resizeImage(url, "full");
+}
+
+/**
  * 搜尋結果 + 勾選加入帶看紀錄。
  *
  * 這一支只負責顯示與勾選；篩選與分頁都在網址上，由伺服器處理。
@@ -215,8 +228,18 @@ export default function ListingResults({
               <span>加入帶看紀錄</span>
             </label>
 
-            {/* 整張卡片可點開詳細；勾選框在上面，已用 stopPropagation 隔開。 */}
-            <button type="button" className="listing-open" onClick={() => setOpenId(listing.id)}>
+            {/* 整張卡片可點開詳細；勾選框在上面，已用 stopPropagation 隔開。
+
+                滑到卡片上就先把大圖抓下來：從「決定要看這間」到「真的按下去」
+                中間有零點幾秒，那段時間本來是閒著的，拿來預載剛好夠一張圖進來，
+                按下去就已經在快取裡了。滑過去沒點也只是多一張 68 KB。 */}
+            <button
+              type="button"
+              className="listing-open"
+              onClick={() => setOpenId(listing.id)}
+              onMouseEnter={() => prefetchPhoto(listing.images[0])}
+              onTouchStart={() => prefetchPhoto(listing.images[0])}
+            >
               {/* 原生 img：next/image 會把來源網站的圖片抓下來重新代管，這裡只做外連。 */}
               {listing.images[0] && (
                 <img className="listing-photo" src={resizeImage(listing.images[0], "thumb")} alt="" loading="lazy" />

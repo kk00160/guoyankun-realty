@@ -1,6 +1,13 @@
 import { bad, fail, ok, optionalText, readJson } from "@/lib/api";
+import { buildSubmitMessage, isLineConfigured, notifyQuietly } from "@/lib/notify-line";
 import { BUYER_CHOICES, type BuyerChoice, isTourOpen, tourClosedReason } from "@/lib/tour";
-import { getTourByToken, markTourSubmitted, patchTour, setBuyerChoice } from "@/lib/tour-store";
+import {
+  getTourByToken,
+  listTourEntries,
+  markTourSubmitted,
+  patchTour,
+  setBuyerChoice
+} from "@/lib/tour-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,11 +42,36 @@ export async function POST(request: Request, context: { params: Promise<{ token:
 
     // 送出：勾選早就存好了，這裡只是標記「挑完了」。
     if (body.action === "submit") {
+      // 先記下來這是不是「改主意再送一次」。markTourSubmitted 會把時間戳蓋掉，
+      // 蓋掉之後就分不出來了，而這兩件事對你的意義完全不同。
+      const isResubmit = Boolean(tour.submittedAt);
+
       await markTourSubmitted(tour.id);
+
+      let buyerName = tour.buyerName;
       if (typeof body.buyerName === "string") {
         const name = optionalText(body.buyerName, 50);
-        if (name) await patchTour(tour.id, { buyerName: name });
+        if (name) {
+          await patchTour(tour.id, { buyerName: name });
+          buyerName = name;
+        }
       }
+
+      /**
+       * 推一則到你的 LINE。
+       *
+       * 讀 entries 也放進 try：它會打資料庫，而這一整段是「順便做的事」，
+       * 不能讓它把買方那句「已送出」弄不見。沒設定 LINE 時整段跳過。
+       */
+      if (isLineConfigured()) {
+        try {
+          const entries = await listTourEntries(tour.id);
+          await notifyQuietly("買方送出", buildSubmitMessage({ ...tour, buyerName }, entries, isResubmit));
+        } catch (error) {
+          console.error("[LINE] 買方送出通知炸了：", error);
+        }
+      }
+
       return ok({ submitted: true });
     }
 

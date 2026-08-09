@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import {
   type Listing,
+  displayAddress,
   formatAge,
   formatPing,
   formatPrice,
   formatSeenAt,
   formatUnitPrice,
-  publicRatio,
+  publicAreaLabel,
   resizeImage
 } from "@/lib/listings";
 import { googleMapsPlaceUrl, mapPlaceUrl, mapTarget } from "@/lib/route";
@@ -44,7 +45,22 @@ export default function ListingDetail({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, photos.length]);
 
-  const ratio = publicRatio(listing);
+  /**
+   * 先把前後兩張抓下來放進瀏覽器快取。
+   *
+   * 翻照片是一路按著方向鍵翻的，每張都等 0.2 秒就會覺得整個系統很鈍。
+   * 只抓前後各一張，不是整本相簿 —— 相簿最多 30 張，一次全抓等於
+   * 為了一間房子拉兩百多 KB，而你多半翻兩三張就關掉了。
+   */
+  useEffect(() => {
+    if (photos.length < 2) return;
+    for (const step of [1, -1]) {
+      const next = (index + step + photos.length) % photos.length;
+      const img = new Image();
+      img.src = resizeImage(photos[next], "full");
+    }
+  }, [index, photos]);
+
   const place = mapTarget(listing);
 
   // 一眼要看到的四個數字，放在標題底下，不用捲動。
@@ -55,10 +71,18 @@ export default function ListingDetail({
     ["單價", formatUnitPrice(listing.unitPrice)]
   ];
 
+  /**
+   * 坪數拆開來看，不要只給一個「權狀 44.4 坪」。
+   *
+   * 公設那兩列走 publicAreaLabel：透天與別墅本來就沒有公設，硬算會得到
+   * 一個看起來很像真的、拿去談會出錯的數字（見 listings.ts）。
+   */
   const specs: [string, string][] = [
     ["權狀坪數", formatPing(listing.ping)],
     ["主建物", listing.mainArea ? `${listing.mainArea.toFixed(1)} 坪` : "—"],
-    ["公設比", ratio === null ? "—" : `約 ${ratio.toFixed(0)}%`],
+    ["公設坪數", publicAreaLabel(listing, "area")],
+    ["公設比", publicAreaLabel(listing, "ratio")],
+    ["每坪單價", formatUnitPrice(listing.unitPrice)],
     ["格局", listing.layout ?? "—"],
     ["屋齡", formatAge(listing.age)],
     ["型態", listing.houseType ?? "—"],
@@ -67,9 +91,9 @@ export default function ListingDetail({
     ["車位", listing.parking ?? "—"],
     ["社區", listing.communityName ?? "—"],
     ["行政區", listing.district ?? "—"],
-    ["地址", listing.address ?? "未提供"],
-    ["刊登", listing.postedLabel ?? "—"],
-    ["刊登者", listing.sellerLabel ?? "—"]
+    ["地址", displayAddress(listing) ?? "未提供"]
+    // 刻意不顯示刊登者（原刊登仲介的名字）與刊登時間：
+    // 你要判斷的是房子，不是誰在賣。資料新舊看下面那行「資料更新於」就夠了。
   ];
 
   return (
@@ -100,8 +124,15 @@ export default function ListingDetail({
           <div className="detail-gallery">
             {photos.length > 0 ? (
               <>
-                {/* 原生 img：不把來源網站的圖片轉存到自己的網域。 */}
-                <img className="detail-photo" src={resizeImage(photos[index], "full")} alt="" />
+                {/* 原生 img：不把來源網站的圖片轉存到自己的網域。
+                    這張是你點開之後唯一在等的東西，所以插隊排最前面，不要延後載入。 */}
+                <img
+                  className="detail-photo"
+                  src={resizeImage(photos[index], "full")}
+                  alt=""
+                  fetchPriority="high"
+                  decoding="async"
+                />
                 {photos.length > 1 && (
                   <>
                     <button

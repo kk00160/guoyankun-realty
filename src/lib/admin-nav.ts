@@ -31,6 +31,7 @@ export type AdminEntry = {
   /** 分頁上的短標籤。三到五個字最好看，太長會擠。 */
   label: string;
   href: string;
+  /** 線條圖示的名稱，對應 src/app/admin/_components/AdminIcon.tsx。不是表情符號。 */
   icon: string;
 };
 
@@ -55,19 +56,19 @@ export const ADMIN_SYSTEMS: AdminSystem[] = [
     id: "tour",
     label: "買方配案",
     title: "買方配案系統",
-    icon: "🔍",
+    icon: "match",
     href: "/admin/listings",
     summary: "從案源裡篩出要給買方的物件，產一條連結給他自己勾，勾完排路線、印帶看單。",
     cta: "開始配案",
     enabled: TOUR_ENABLED,
     disabledReason: "TOUR_ENABLED 沒設成 true。",
-    links: [{ label: "帶看日記", href: "/admin/tours", icon: "📔" }]
+    links: [{ label: "帶看日記", href: "/admin/tours", icon: "diary" }]
   },
   {
     id: "lead",
     label: "來客名單",
     title: "預約諮詢系統",
-    icon: "📇",
+    icon: "leads",
     href: "/admin/leads",
     summary: "客戶在首頁按「送出預約」留下的姓名、電話與需求，全部落在這裡。",
     cta: "看來客名單",
@@ -79,7 +80,7 @@ export const ADMIN_SYSTEMS: AdminSystem[] = [
     id: "booking",
     label: "時段預約",
     title: "線上選時段預約",
-    icon: "📅",
+    icon: "calendar",
     href: "/admin/appointments",
     summary: "客戶自己挑一個時段預約諮詢。跟上面的來客名單是兩回事：那個是留資料請你回電，這個是直接把時間定下來。",
     cta: "看預約名單",
@@ -92,7 +93,7 @@ export const ADMIN_SYSTEMS: AdminSystem[] = [
 
 /** 上面那排分頁：控台 + 每個有開的系統（含它底下的入口）。 */
 export function adminTabs(): AdminEntry[] {
-  const tabs: AdminEntry[] = [{ label: "控台", href: "/admin", icon: "🏠" }];
+  const tabs: AdminEntry[] = [{ label: "控台", href: "/admin", icon: "console" }];
   for (const system of ADMIN_SYSTEMS) {
     if (!system.enabled) continue;
     tabs.push({ label: system.label, href: system.href, icon: system.icon });

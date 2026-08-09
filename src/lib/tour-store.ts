@@ -626,16 +626,48 @@ export async function setBuyerChoice(tourId: string, listingId: string, choice: 
   if (error) throw new Error(`儲存選擇失敗：${error.message}`);
 }
 
-/** 排完路線後把順序寫回去，帶看單與報告都照這個順序顯示。 */
-export async function saveVisitOrder(tourId: string, orderedListingIds: string[]) {
-  for (const [index, listingId] of orderedListingIds.entries()) {
-    const { error } = await db()
-      .from("tour_items")
-      .update({ visit_order: index + 1 })
-      .eq("tour_id", tourId)
-      .eq("listing_id", listingId);
-    if (error) throw new Error(`儲存看房順序失敗：${error.message}`);
-  }
+/**
+ * 把看房順序寫回去。帶看單、行程連結與報告都照這個順序顯示。
+ *
+ * 兩個地方會呼叫：自動排路線，以及後台手動按上下箭頭。兩邊共用同一支，
+ * 順序的寫法只有這一種，不會有「自動排的」跟「手動排的」兩套規則。
+ *
+ * 一次 upsert 寫完，不要一筆一筆 update：手動微調是連續按的動作，
+ * 每按一下就跟新加坡來回 N 趟，八間房子就是八趟，按起來會有明顯延遲。
+ *
+ * 先讀一次現有的 item 不是多餘的 —— upsert 碰到不在這張帶看單裡的
+ * listing_id 會「新增」一筆，等於憑空把一間房子塞進帶看單。先對過再寫。
+ */
+export async function saveVisitOrder(tourId: string, orderedListingIds: string[]): Promise<string[]> {
+  const existing = await readList(
+    () => db().from("tour_items").select("listing_id").eq("tour_id", tourId),
+    "讀取帶看物件"
+  );
+  const known = new Set(existing.map((row) => String(row.listing_id)));
+
+  const ordered = orderedListingIds.filter((listingId) => known.has(listingId));
+  const inOrder = new Set(ordered);
+
+  // 送來的沒有一筆對得上（例如另一個分頁把整張帶看單換掉了）就什麼都不要動。
+  // 下面會把沒排到的站號清成 null —— 在這種情況下那等於默默把整張單的順序洗掉。
+  if (ordered.length === 0) return [];
+
+  const rows = [
+    ...ordered.map((listingId, index) => ({ tour_id: tourId, listing_id: listingId, visit_order: index + 1 })),
+    // 沒排進這次順序的，站號一律清掉。
+    // 不清的話會留下上一次排路線的舊站號 —— 那間房子明明沒排進去，
+    // 重新整理之後卻插在中間，而且畫面上完全看不出來為什麼。
+    ...[...known]
+      .filter((listingId) => !inOrder.has(listingId))
+      .map((listingId) => ({ tour_id: tourId, listing_id: listingId, visit_order: null }))
+  ];
+
+  const { error } = await db().from("tour_items").upsert(rows, { onConflict: "tour_id,listing_id" });
+  if (error) throw new Error(`儲存看房順序失敗：${error.message}`);
+
+  // 回傳「真的存進去的那些」，不要把呼叫端送來的原樣丟回去 ——
+  // 那會讓一筆都沒對上的情況看起來像成功了。
+  return ordered;
 }
 
 export async function setAgentNote(tourId: string, listingId: string, note: string) {

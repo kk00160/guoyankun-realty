@@ -60,10 +60,33 @@ const JSON_LD = {
   url: SITE_URL
 };
 
+/**
+ * 物件照片全部直接連到來源網站的圖床（我們不轉存別人的圖）。
+ *
+ * 先跟這三台機器把連線握好，第一張照片就省下 DNS 查詢與 TLS 交握。
+ * 實測從台南量：光是握手就要 70～105 毫秒，而且每個網域各要一次 ——
+ * 一頁上同時出現 img1 與 img2 是常態，等於白等兩輪。
+ * 這幾行不佔頻寬，瀏覽器只是先把水管接好。
+ */
+const IMAGE_HOSTS = ["https://img1.591.com.tw", "https://img2.591.com.tw", "https://img3.591.com.tw"];
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-Hant-TW">
-      <body>
+      <head>
+        {IMAGE_HOSTS.map((host) => (
+          <link key={host} rel="preconnect" href={host} crossOrigin="anonymous" />
+        ))}
+      </head>
+      {/*
+        配色掛在 body 上 = 全站同一套（2026-08-09 彥坤指定，首頁也要跟後台一致）。
+        以前是後台與買方頁各自的 layout 掛，首頁刻意維持紫綠 CIS；那條規則已經作廢。
+
+        /admin 與 /tour 的 layout 仍然各自掛著同一個 class，不要因為這裡有了就去拿掉 ——
+        重複宣告同一組變數沒有任何代價，但少了它們，哪天有人改動根 layout
+        就會一次弄掉所有後台與買方頁的配色，而那是客戶看得到的畫面。
+      */}
+      <body className="theme-latte">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}

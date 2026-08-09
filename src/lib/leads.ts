@@ -8,6 +8,8 @@
  * 這支檔案沒有任何 I/O，client component 可以直接 import。
  */
 
+import { formatInTaipei } from "@/lib/format-date";
+
 /** new：還沒聯絡　contacted：聯絡過了　done：結案　spam：垃圾 */
 export type LeadStatus = "new" | "contacted" | "done" | "spam";
 
@@ -56,15 +58,14 @@ export function toLead(row: Record<string, unknown>): Lead {
 export function formatLeadTime(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("zh-TW", {
-    timeZone: "Asia/Taipei",
+  return formatInTaipei(date, {
     month: "numeric",
     day: "numeric",
     weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false
-  }).format(date);
+  });
 }
 
 /**

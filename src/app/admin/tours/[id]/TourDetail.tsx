@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { buyerTourUrl } from "@/lib/buyer-link";
-import { formatPing, formatPrice, formatSeenAt, formatUnitPrice } from "@/lib/listings";
+import { displayAddress, formatPing, formatPrice, formatSeenAt, formatUnitPrice } from "@/lib/listings";
 import { mapDirectionsUrl, mapTarget } from "@/lib/route";
 import { BUYER_CHOICE_LABEL, type Tour, formatTourDate, isTourOpen } from "@/lib/tour";
 import type { TourEntry } from "@/lib/tour-store";
@@ -22,6 +22,8 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  /** 手動排順序的存檔狀態。"" 沒動過　saving 存檔中　saved 已存　failed 沒存成功 */
+  const [orderState, setOrderState] = useState<"" | "saving" | "saved" | "failed">("");
 
   const interested = rows.filter((row) => row.buyerChoice === "interested").length;
   const rejected = rows.filter((row) => row.buyerChoice === "rejected").length;
@@ -60,6 +62,97 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
     } finally {
       setBusy("");
     }
+  }
+
+  // ---------------------------------------------------------------
+  // 手動調整看房順序
+  //
+  // 自動排路線算的是「路程最短」，但實際帶看還有屋主方便的時間、
+  // 想壓軸的那間、中午順路吃飯 —— 那些演算法不知道。
+  // 所以自動排完之後一定要能自己搬，而且後搬的要蓋掉先前自動排的結果。
+  // ---------------------------------------------------------------
+
+  const pendingOrder = useRef<string[] | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * rows 的同步鏡像，moveItem 一律讀這個而不是讀 state。
+   *
+   * 實測過（同一個 tick 裡連按三下）：讀 state 的話，第二、三下拿到的都還是
+   * 第一下之前的順序，三次操作只會生效一次 —— 而畫面跟資料庫是一致的，
+   * 所以看起來完全正常，只是有幾下沒吃到。順序默默錯掉是這套系統最不能出的錯，
+   * 手上那張印出來的帶看單就是照它排的。
+   */
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  /**
+   * 把還在等的順序送出去。
+   *
+   * 只讀 ref 不讀 state，所以哪一次 render 的閉包呼叫它都拿得到最新的順序 ——
+   * 下面 unmount 時要用到這一點。
+   */
+  async function flushOrder() {
+    const order = pendingOrder.current;
+    if (!order) return;
+    pendingOrder.current = null;
+    try {
+      const response = await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "順序沒存成功");
+      setOrderState("saved");
+    } catch {
+      setOrderState("failed");
+    }
+  }
+
+  /**
+   * 慢半拍再存。
+   *
+   * 連按三下箭頭是一個動作不是三個，等他停手再送一次就好：
+   * 少跑兩趟資料庫，也避免三個請求回來的先後順序跟送出去的不一樣，
+   * 最後存進去的反而是中間那個狀態。
+   */
+  function queueSave(order: string[]) {
+    pendingOrder.current = order;
+    setOrderState("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => void flushOrder(), 500);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      // 剛按完箭頭就跳去「產生帶看單」的話，那半秒的等待會來不及。
+      // 站內換頁不會把 JS 環境砍掉，所以這裡補送得出去。
+      void flushOrder();
+    };
+    // flushOrder 只讀 ref 與 tour.id，不需要重新綁。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function moveItem(listingId: string, delta: -1 | 1) {
+    const current = rowsRef.current;
+    const index = current.findIndex((row) => row.listingId === listingId);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= current.length) return;
+
+    const next = [...current];
+    [next[index], next[target]] = [next[target], next[index]];
+
+    // 螢幕上看到的順序就是要存的順序，所以站號一律從 1 重編、不留洞。
+    // 留洞的話「第 3 站」跟「從上面數下來第 3 個」會對不起來，
+    // 而你手上拿的是印出來的那張紙，對不起來就是站錯地方。
+    const renumbered = next.map((row, position) => ({ ...row, visitOrder: position + 1 }));
+    rowsRef.current = renumbered;
+    setRows(renumbered);
+    queueSave(renumbered.map((row) => row.listingId));
   }
 
   async function removeItem(listingId: string) {
@@ -194,12 +287,22 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
       <div className="tour-link-row">
         <code>{buyerTourUrl(token)}</code>
         <button type="button" onClick={copyLink}>
-          {copied ? "已複製" : "複製連結"}
+          {copied ? "已複製" : "複製挑選連結"}
         </button>
         <button type="button" onClick={rotate} disabled={busy === "rotate"}>
           換一把新鑰匙
         </button>
       </div>
+
+      {/* 同一個 token 有兩條買方連結，性質完全不同，一定要在按下去之前講清楚。
+          決定買方看到什麼的是「你複製了哪一條」，不是任何開關 —— 你在複製的當下
+          就知道這次是要他挑、還是行程已經定了，不需要再去別的地方設定一次。 */}
+      <p className="tour-link-note">
+        上面這條是<b>挑選連結</b>：買方打開會看到想看／略過，是請他先挑。
+        <br />
+        行程已經談定、只是要把順序跟導航發給他 —— 那要按下面的<b>「產生帶看單」</b>，
+        那一頁裡的<b>「複製行程連結」</b>才是對的那條。
+      </p>
 
       <div className="filter-row">
         <button type="button" className="button" onClick={() => planRoute("interested")} disabled={busy === "route"}>
@@ -242,12 +345,52 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
         </section>
       )}
 
+      {rows.length > 1 && (
+        <p className="order-hint">
+          左邊的 <b>↑ ↓</b> 可以自己搬順序，搬完自動存，帶看單與買方的行程連結都會跟著改。
+          {orderState === "saving" && <span className="order-state">儲存中…</span>}
+          {orderState === "saved" && <span className="order-state is-done">順序已存</span>}
+        </p>
+      )}
+
+      {/* 順序沒存成功一定要講。畫面上已經搬好了，看起來像成功了，
+          但重新整理就會跳回去 —— 而你可能已經把帶看單印出來了。 */}
+      {orderState === "failed" && (
+        <p className="alert-bar" role="alert">
+          <b>順序沒存進去。</b>
+          　畫面上是你排的樣子，但資料庫還是舊的，現在去產生帶看單會拿到舊順序。
+          再按一次上下箭頭重試，或重新整理這一頁看目前真正存著的順序。
+        </p>
+      )}
+
       <div className="tour-item-list">
-        {rows.map((entry) => {
+        {rows.map((entry, index) => {
           const place = mapTarget(entry.listing);
           return (
           <article key={entry.id} className="tour-item" data-choice={entry.buyerChoice}>
-            <div className="tour-item-order">{entry.visitOrder ?? "—"}</div>
+            <div className="tour-item-order">
+              <button
+                type="button"
+                className="order-move"
+                onClick={() => moveItem(entry.listingId, -1)}
+                disabled={index === 0}
+                aria-label="往前一站"
+                title="往前一站"
+              >
+                ↑
+              </button>
+              <span className="order-number">{entry.visitOrder ?? "—"}</span>
+              <button
+                type="button"
+                className="order-move"
+                onClick={() => moveItem(entry.listingId, 1)}
+                disabled={index === rows.length - 1}
+                aria-label="往後一站"
+                title="往後一站"
+              >
+                ↓
+              </button>
+            </div>
 
             <div className="tour-item-body">
               <h3>{entry.listing.title}</h3>
@@ -256,7 +399,7 @@ export default function TourDetail({ tour, entries }: { tour: Tour; entries: Tou
                 {formatUnitPrice(entry.listing.unitPrice)}　·　{entry.listing.layout ?? "格局未提供"}
               </p>
               <p className="tour-item-meta">
-                {entry.listing.district ?? "—"}　{entry.listing.address ?? ""}
+                {entry.listing.district ?? "—"}　{displayAddress(entry.listing) ?? ""}
                 {/* 幾乎每一筆都沒有座標，所以這個標籤要講清楚它只影響「排順序」，
                     不要讓人以為這間連導航都按不出來。 */}
                 {entry.listing.lat === null && <span className="tag tag-warn">無座標·排順序時略過</span>}

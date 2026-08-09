@@ -13,13 +13,18 @@ import { PROFILE } from "@/lib/profile";
  *    交給 client component 自己算的話，畫面會先出現正確的分頁，
  *    然後在 hydration 之後被抹掉，只剩「控台」。這個 bug 實際發生過。
  *
- * 這裡刻意不包任何容器 div：各頁自己的 .admin-page / .report-page 版面維持原樣。
+ * 外面那層 .theme-latte 是配色（暖白＋深綠＋大圓角，見 globals.css）。
+ * 後台與買方頁共用同一套，客戶看到的跟你自己看到的是同一個品牌。
+ *
+ * 包在這裡而不是寫進 :root，是因為名片站首頁跟這裡共用同一組變數名稱 ——
+ * 改 :root 等於連首頁的紫綠 CIS 一起換掉。包成容器之後，/admin 底下
+ * 每一頁自動套到，容器外面的一切原封不動。新增後台頁面不用做任何事。
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="theme-latte">
       <AdminNav tabs={adminTabs()} brand={`${PROFILE.name}房仲控台`} />
       {children}
-    </>
+    </div>
   );
 }

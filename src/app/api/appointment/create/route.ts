@@ -4,15 +4,11 @@ import {
   MEET_TYPE_KEYS,
   URGENCY_KEYS,
   formatSlotTaipei,
-  isValidSlot
+  isValidSlot,
+  meetDuration
 } from "@/lib/booking";
-import {
-  SlotConflictError,
-  attachPreview,
-  createAppointment
-} from "@/lib/appointment-store";
-import { gradeLead } from "@/lib/grading";
-import { createEmailPreview } from "@/lib/appointment-notify";
+import { CalendarUnavailableError, SlotConflictError, createAppointment } from "@/lib/appointment-store";
+import { buildAppointmentMessage, notifyQuietly } from "@/lib/notify-line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,9 +36,9 @@ export async function POST(request: Request) {
     if (!intent.length || !intent.every((key: string) => INTENT_KEYS.includes(key))) return bad("請至少選擇一個需求。");
     if (!URGENCY_KEYS.includes(urgency)) return bad("請選擇預計處理時間。");
     if (!note || note.length > 2000) return bad("請填寫需求說明。");
-    if (!isValidSlot(slotIso)) return bad("這個時段目前不能預約，請重新選擇。");
+    // 時段長度跟著見面方式走，不能讓前端自己送一個長度上來。
+    if (!isValidSlot(slotIso, meetDuration(meetType))) return bad("這個時段目前不能預約，請重新選擇。");
 
-    const grade = gradeLead(intent, urgency, note);
     const appointment = await createAppointment({
       name,
       phone,
@@ -52,29 +48,26 @@ export async function POST(request: Request) {
       intent,
       note,
       slotIso,
-      aiHeat: grade.heat,
-      aiSuggestion: grade.suggestion,
-      aiSummary: grade.summary,
-      aiNextAction: grade.nextAction
+      source: "card"
     });
 
-    let previewFile: string | null = null;
-    try {
-      previewFile = await createEmailPreview(appointment);
-      await attachPreview(appointment.id, previewFile);
-    } catch (error) {
-      console.error("[preview]", error);
-    }
+    // 預約已經寫進去了，接下來這則只是通知。它失敗不能影響客戶看到的結果 ——
+    // 客戶那邊時段已經被佔走，卻收到錯誤訊息去重按一次，就會撞到 SlotConflict。
+    await notifyQuietly("新預約", buildAppointmentMessage(appointment));
 
     return NextResponse.json({
       ok: true,
       id: appointment.id,
-      slotLabel: formatSlotTaipei(appointment.slotIso),
-      previewFile
+      caseNo: appointment.caseNo,
+      slotLabel: formatSlotTaipei(appointment.slotIso, appointment.durationMin)
     });
   } catch (error) {
     if (error instanceof SlotConflictError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 409 });
+    }
+    // 日曆問不到 ≠ 有空。寧可請客戶重試，也不要讓你同時答應兩個人。
+    if (error instanceof CalendarUnavailableError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 503 });
     }
     console.error("[create]", error);
     return NextResponse.json({ ok: false, error: "系統忙碌，請稍後重試。" }, { status: 500 });

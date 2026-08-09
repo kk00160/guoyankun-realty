@@ -1,6 +1,7 @@
 import { bad, fail, ok, optionalText, readJson } from "@/lib/api";
 import { isDbConfigured } from "@/lib/db";
 import { createLead } from "@/lib/lead-store";
+import { buildLeadMessage, notifyQuietly } from "@/lib/notify-line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +48,10 @@ export async function POST(request: Request) {
       message: optionalText(body.message, 1000),
       source: "home"
     });
+
+    // 通知一定要放在存檔成功之後。
+    // 反過來的話，你會收到一則「有新來客」，然後打開後台發現名單裡沒有這個人。
+    await notifyQuietly("新來客", buildLeadMessage(lead));
 
     return ok({ saved: true, id: lead.id });
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   type Listing,
   formatAge,
@@ -8,12 +8,11 @@ import {
   formatPrice,
   formatSeenAt,
   formatUnitPrice,
-  publicRatio,
-  resizeImage
+  publicAreaLabel
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
-import { mapDirectionsUrl, mapPlaceUrl, mapTarget } from "@/lib/route";
 import type { BuyerChoice } from "@/lib/tour";
+import Gallery from "./Gallery";
 
 type Entry = {
   listingId: string;
@@ -22,71 +21,6 @@ type Entry = {
   visitOrder: number | null;
   listing: Listing;
 };
-
-/**
- * 一間房的照片相簿。
- *
- * 用 CSS scroll-snap 做橫向滑動，不寫任何拖曳邏輯 ——
- * 手機上原生的慣性滑動比自己寫的順，而且不會跟頁面的上下捲動打架。
- *
- * ⚠️ 但一定要有左右箭頭，不能只靠滑。
- * 實際踩過：買方在電腦上打開連結，滑鼠滾輪只會上下捲，橫向捲軸又被藏起來，
- * 結果他以為「這間只有一張照片」。手機上滑得動，所以自己測不會發現。
- */
-function Gallery({ photos, alt }: { photos: string[]; alt: string }) {
-  const [index, setIndex] = useState(0);
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  if (photos.length === 0) {
-    return <div className="buyer-photo buyer-photo-empty">沒有照片</div>;
-  }
-
-  /** 捲到第 n 張。用捲動而不是換 src，才不會跟 scroll-snap 打架。 */
-  function goTo(next: number) {
-    const track = trackRef.current;
-    if (!track) return;
-    const wrapped = (next + photos.length) % photos.length;
-    track.scrollTo({ left: wrapped * track.clientWidth, behavior: "smooth" });
-    setIndex(wrapped);
-  }
-
-  return (
-    <div className="buyer-gallery">
-      <div
-        className="buyer-track"
-        ref={trackRef}
-        onScroll={(event) => {
-          const el = event.currentTarget;
-          setIndex(Math.round(el.scrollLeft / el.clientWidth));
-        }}
-      >
-        {photos.map((src) => (
-          // 原生 img：不把來源網站的圖片轉存到自己的網域。
-          <img key={src} className="buyer-photo" src={resizeImage(src, "card")} alt={alt} loading="lazy" />
-        ))}
-      </div>
-
-      {photos.length > 1 && (
-        <>
-          <button type="button" className="buyer-nav buyer-prev" onClick={() => goTo(index - 1)} aria-label="上一張">
-            ‹
-          </button>
-          <button type="button" className="buyer-nav buyer-next" onClick={() => goTo(index + 1)} aria-label="下一張">
-            ›
-          </button>
-          <div className="buyer-counter">
-            {index + 1} / {photos.length}
-          </div>
-          <div className="buyer-dots">
-            {photos.slice(0, 12).map((src, i) => (
-              <span key={src} data-on={i === index} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 export default function BuyerPicker({
   token,
@@ -124,8 +58,9 @@ export default function BuyerPicker({
    * 有順序就代表行程定了 —— 這時候買方打開連結最想知道的是
    * 「我們要看哪幾間、什麼順序」，而不是再挑一次。所以這一區放在最上面。
    *
-   * 這也是為什麼買方不需要第二條連結：帶看單那一頁是 /admin 底下的後台頁，
-   * 網址傳出去買方只會看到要求輸入密碼的畫面（實際發生過）。
+   * 這裡只放純文字的順序摘要，刻意不放任何導航連結，也不放通往行程頁的入口。
+   * 導航屬於「已經談定要看哪幾間」之後的事，那是 /tour/[token]/plan 的職責，
+   * 而那條連結什麼時候發出去由阿坤決定 —— 不該從這一頁自己滲過去。
    */
   const plan = useMemo(
     () =>
@@ -215,24 +150,16 @@ export default function BuyerPicker({
           <h2>看房行程</h2>
           <p className="buyer-plan-note">這是我們要看的順序，時間我再跟你電話確認。</p>
           <ol className="buyer-plan-list">
-            {plan.map((entry) => {
-              const place = mapTarget(entry.listing);
-              return (
-                <li key={entry.listingId}>
-                  <b>{entry.listing.title}</b>
-                  <span>
-                    {entry.listing.district ?? ""}
-                    {entry.listing.address ? `　${entry.listing.address}` : ""}
-                    　{formatPrice(entry.listing.totalPrice)}
-                  </span>
-                  {place && (
-                    <a href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer">
-                      🧭 導航
-                    </a>
-                  )}
-                </li>
-              );
-            })}
+            {plan.map((entry) => (
+              <li key={entry.listingId}>
+                <b>{entry.listing.title}</b>
+                <span>
+                  {entry.listing.district ?? ""}
+                  {entry.listing.address ? `　${entry.listing.address}` : ""}
+                  　{formatPrice(entry.listing.totalPrice)}
+                </span>
+              </li>
+            ))}
           </ol>
         </section>
       )}
@@ -240,10 +167,6 @@ export default function BuyerPicker({
       <div className="buyer-list">
         {rows.map((entry) => {
           const listing = entry.listing;
-          const ratio = publicRatio(listing);
-          // 有社區名就用社區名找，沒有就用地址找。幾乎沒有物件有經緯度，
-          // 舊版只認經緯度，等於九成九的房子看不到「看地圖」。
-          const place = mapTarget(listing);
 
           return (
             <article key={entry.listingId} className="buyer-card" data-choice={entry.choice}>
@@ -301,7 +224,7 @@ export default function BuyerPicker({
                       [
                         ["權狀坪數", formatPing(listing.ping)],
                         ["主建物", listing.mainArea ? `${listing.mainArea.toFixed(1)} 坪` : "—"],
-                        ["公設比", ratio === null ? "—" : `約 ${ratio.toFixed(0)}%`],
+                        ["公設比", publicAreaLabel(listing, "ratio")],
                         ["格局", listing.layout ?? "—"],
                         ["屋齡", formatAge(listing.age)],
                         ["型態", listing.houseType ?? "—"],
@@ -322,14 +245,11 @@ export default function BuyerPicker({
 
                 {/* 刻意只留更新日期，不揭露資料從哪裡來。
                     日期不能拿掉：買方拿一個月前的價格來談，責任會落在阿坤身上。 */}
-                {/* 導航做成一顆看得見的按鈕，不是藏在句尾的小字連結。
-                    買方拿到清單之後真的會做的事就是「這間在哪、怎麼去」。
-                    目的地優先用阿坤補的正確門牌（見 route.ts 的 mapTarget）。 */}
-                {place && (
-                  <a className="buyer-nav-link" href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer">
-                    🧭 導航到這間
-                  </a>
-                )}
+                {/* ⚠️ 這一頁刻意沒有導航按鈕，不要「順手補回來」。
+                    這條連結問的是「你要不要看這間」，還沒到「怎麼去」那一步；
+                    在還沒決定要不要看的時候放一顆導航，等於暗示他可以自己先去看。
+                    導航只出現在行程頁 /tour/[token]/plan 與印出來的帶看單上 ——
+                    那兩個地方的前提都是「要看哪幾間已經談定了」。 */}
 
                 <p className="buyer-source">
                   資料更新於 {formatSeenAt(listing.lastSeenAt)}　·　實際屋況與價格以現場為準

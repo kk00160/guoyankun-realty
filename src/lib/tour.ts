@@ -4,6 +4,8 @@
  * 這支檔案保持「純函式、無 I/O」，跟 booking.ts 一樣可以被 client component 直接 import。
  */
 
+import { formatInTaipei } from "@/lib/format-date";
+
 export type TourStatus = "active" | "revoked" | "done";
 
 export const TOUR_STATUS_LABEL: Record<TourStatus, string> = {
@@ -149,13 +151,12 @@ export function formatTourDate(iso: string) {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("zh-TW", {
-    timeZone: "Asia/Taipei",
+  return formatInTaipei(date, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false
-  }).format(date);
+  });
 }

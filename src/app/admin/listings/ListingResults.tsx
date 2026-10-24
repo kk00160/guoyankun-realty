@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   type Listing,
   type ListingStatus,
@@ -13,9 +13,22 @@ import {
   resizeImage
 } from "@/lib/listings";
 import { buyerTourUrl, isLocalPreview, localTourUrl } from "@/lib/buyer-link";
-import { type ListingQuery, buildListingHref, describeQuery } from "@/lib/listing-filters";
+import { type ListingQuery, buildListingHref, describeQuery, explainKeyword } from "@/lib/listing-filters";
 import type { ListingPage } from "@/lib/tour-store";
 import ListingDetail from "./ListingDetail";
+
+/**
+ * 先把某一張照片的大圖抓進瀏覽器快取。
+ *
+ * 只丟出去不等結果：這是「順便先拿」，抓不到就抓不到，
+ * 絕對不能因為預載失敗而影響點開卡片這件事。
+ * 同一個網址抓第二次瀏覽器會自己走快取，不用自己記已經抓過哪些。
+ */
+function prefetchPhoto(url: string | undefined) {
+  if (!url || typeof window === "undefined") return;
+  const img = new Image();
+  img.src = resizeImage(url, "full");
+}
 
 /**
  * 搜尋結果 + 勾選加入帶看紀錄。
@@ -31,7 +44,27 @@ export default function ListingResults({
   result: ListingPage;
   tours: { id: string; title: string }[];
 }) {
-  const [rows, setRows] = useState(result.rows);
+  /**
+   * 卡片一律以伺服器送來的 result.rows 為準，只疊上「這一輪在畫面上改過的狀態」。
+   *
+   * ⚠️ 這裡以前寫成 useState(result.rows) —— 那是一個很難發現的錯：
+   * useState 只會在第一次渲染時採用參數，之後伺服器送新的搜尋結果進來，
+   * React 重用同一個元件實例，rows 就永遠停在第一次那批。
+   * 症狀是「換關鍵字按搜尋，網址和筆數都變了，卡片卻沒換」——
+   * 而且完全不會報錯，只有你自己盯著卡片才發現不對。
+   *
+   * 改成從 props 推導之後，換條件就一定跟著換；本地改過狀態的那幾筆用 Map 疊上去。
+   */
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, ListingStatus>>({});
+  const rows = useMemo(
+    () =>
+      result.rows.map((row) => {
+        const next = statusOverrides[row.id];
+        if (!next) return row;
+        return { ...row, status: next, reviewReasons: next === "active" ? [] : row.reviewReasons };
+      }),
+    [result.rows, statusOverrides]
+  );
   const [selected, setSelected] = useState<string[]>([]);
   const [tourId, setTourId] = useState(tours[0]?.id ?? "");
   const [busy, setBusy] = useState("");
@@ -64,13 +97,7 @@ export default function ListingResults({
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "更新失敗");
 
-      setRows((current) =>
-        current.map((row) =>
-          row.id === id
-            ? { ...row, status: next, reviewReasons: next === "active" ? [] : row.reviewReasons }
-            : row
-        )
-      );
+      setStatusOverrides((current) => ({ ...current, [id]: next }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "更新失敗");
     } finally {
@@ -167,6 +194,9 @@ export default function ListingResults({
           <span className="result-count">
             {result.total > 0 ? `　共 ${result.total} 筆，顯示 ${from}–${to}` : "　沒有符合的物件"}
           </span>
+          {/* 關鍵字會被拆成「行政區 + 幾個詞」，所以要把拆的結果講出來。
+              系統偷偷改寫你的輸入卻不說，搜出奇怪的結果時你會查不出原因。 */}
+          {query.keyword && <p className="result-explain">你打的「{query.keyword}」我讀成：{explainKeyword(query.keyword)}</p>}
         </div>
       </div>
 
@@ -174,7 +204,9 @@ export default function ListingResults({
 
       {result.total === 0 && (
         <p className="empty-note">
-          這組條件沒有找到物件。把條件放寬一點，或先跑一次匯入把更多案源抓進來。
+          這組條件沒有找到物件。
+          {query.keyword && "關鍵字的每個詞都要同時命中，少打一兩個詞通常就有了。"}
+          也可以把價格或坪數放寬一點。
         </p>
       )}
 
@@ -196,8 +228,18 @@ export default function ListingResults({
               <span>加入帶看紀錄</span>
             </label>
 
-            {/* 整張卡片可點開詳細；勾選框在上面，已用 stopPropagation 隔開。 */}
-            <button type="button" className="listing-open" onClick={() => setOpenId(listing.id)}>
+            {/* 整張卡片可點開詳細；勾選框在上面，已用 stopPropagation 隔開。
+
+                滑到卡片上就先把大圖抓下來：從「決定要看這間」到「真的按下去」
+                中間有零點幾秒，那段時間本來是閒著的，拿來預載剛好夠一張圖進來，
+                按下去就已經在快取裡了。滑過去沒點也只是多一張 68 KB。 */}
+            <button
+              type="button"
+              className="listing-open"
+              onClick={() => setOpenId(listing.id)}
+              onMouseEnter={() => prefetchPhoto(listing.images[0])}
+              onTouchStart={() => prefetchPhoto(listing.images[0])}
+            >
               {/* 原生 img：next/image 會把來源網站的圖片抓下來重新代管，這裡只做外連。 */}
               {listing.images[0] && (
                 <img className="listing-photo" src={resizeImage(listing.images[0], "thumb")} alt="" loading="lazy" />
@@ -233,7 +275,10 @@ export default function ListingResults({
               {listing.district && <span className="tag">{listing.district}</span>}
               {listing.houseType && <span className="tag">{listing.houseType}</span>}
               {listing.floorInfo && <span className="tag">{listing.floorInfo}</span>}
-              {listing.lat === null && <span className="tag tag-warn">缺座標，排不了路線</span>}
+              {/* 全庫 98.7% 都沒有座標（座標要開明細頁一筆一筆補），
+                  所以這個標籤用中性樣式而不是紅色警告 —— 紅到處都是等於沒有警告。
+                  而且它只影響「排行車順序」，導航靠社區名／地址一樣按得出來。 */}
+              {listing.lat === null && <span className="tag">無座標·排順序時略過</span>}
             </div>
 
             {listing.status === "needs_review" && (

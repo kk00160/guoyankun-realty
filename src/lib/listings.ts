@@ -5,6 +5,8 @@
  * 才不會出現「匯入時覺得沒問題、網站覺得有問題」這種兩套標準的情況。
  */
 
+import { formatInTaipei } from "@/lib/format-date";
+
 /** 台南 37 個行政區。順序照常見房產網站篩選器上的排列，方便對照。 */
 export const TAINAN_DISTRICTS = [
   "永康區", "安南區", "東區", "北區", "南區", "中西區", "仁德區", "新營區", "安平區", "歸仁區", "佳里區",
@@ -38,6 +40,14 @@ export type Listing = {
   title: string;
   district: string | null;
   address: string | null;
+  /**
+   * 你手動補的正確門牌。
+   *
+   * 匯入回來的 address 只到路或巷（原始刊登本來就不給門牌），
+   * 這一欄是讓你把實際知道的門牌補進來，導航才會帶到門口而不是巷口。
+   * 刻意跟 address 分開存：蓋掉原始值之後，就再也分不出哪些是你確認過的。
+   */
+  exactAddress: string | null;
   lat: number | null;
   lng: number | null;
   totalPrice: number | null;
@@ -81,6 +91,7 @@ export function toListing(row: Record<string, unknown>): Listing {
     title: String(row.title ?? ""),
     district: str(row.district),
     address: str(row.address),
+    exactAddress: str(row.exact_address),
     lat: num(row.lat),
     lng: num(row.lng),
     totalPrice: num(row.total_price),
@@ -96,8 +107,48 @@ export function toListing(row: Record<string, unknown>): Listing {
     reviewReasons: Array.isArray(row.review_reasons) ? (row.review_reasons as unknown[]).map(String) : [],
     firstSeenAt: String(row.first_seen_at ?? ""),
     lastSeenAt: String(row.last_seen_at ?? ""),
-    ...readExtras(row.raw)
+    ...readExtras(row.raw),
+
+    /**
+     * 欄位空的時候，回頭去 raw 裡撈。
+     *
+     * ⚠️ 一定要放在展開 readExtras 之後，否則會被上面那份覆蓋掉。
+     *
+     * 為什麼需要這一層：實測（2026-08-08）9,275 筆裡有 17 筆 address、5 筆 age
+     * 是空的，但它們的 raw 裡明明就有值 —— 那是最早那批匯入留下的，
+     * 當時的欄位對照還沒補齊。畫面上的症狀是「地址現場提供」「屋齡 —」，
+     * 而點進原始刊登看，資料好端端地寫在那裡。
+     *
+     * 資料庫那 17 筆已經補回去了，這一層是保險：以後再有哪個欄位漏掛，
+     * 畫面上會照樣顯示，而不是安靜地變成一句「現場提供」。
+     */
+    ...fillFromRaw(row)
   };
+}
+
+/** 欄位是空的、但 raw 裡有值，就用 raw 的。兩邊都沒有才是真的沒有。 */
+function fillFromRaw(row: Record<string, unknown>): Partial<Listing> {
+  const raw = (row.raw && typeof row.raw === "object" ? row.raw : {}) as Record<string, unknown>;
+  const patch: Partial<Listing> = {};
+
+  const text = (value: unknown) => {
+    const out = value === null || value === undefined ? "" : String(value).trim();
+    return out.length > 0 ? out : null;
+  };
+
+  if (!text(row.address)) {
+    const fromRaw = text(raw.address);
+    if (fromRaw) patch.address = fromRaw;
+  }
+
+  if (row.age === null || row.age === undefined) {
+    const parsed = Number(raw.houseage);
+    // 屋齡 0 是「新成屋」，是合法的值 —— 不能跟「沒有資料」混為一談，
+    // 所以這裡不能用 `> 0` 去判斷。
+    if (Number.isFinite(parsed) && parsed >= 0) patch.age = parsed;
+  }
+
+  return patch;
 }
 
 /**
@@ -129,12 +180,75 @@ function readExtras(raw: unknown) {
 }
 
 /**
- * 公設比。買方第一個會問的數字之一，591 沒有直接給，要自己算。
- * 權狀扣掉主建物就是公設加附屬建物，所以這是概算，不是登記謄本上的數字。
+ * 要印在畫面上的地址。
+ *
+ * 你補的正確門牌永遠優先 —— 那是你自己去過確認的，比來源的巷弄地址精準。
+ * 但它通常長成「台南市安南區長溪路三段373巷176號」，而地址前面已經印了行政區，
+ * 直接接上去會變成「安南區　台南市安南區長溪路…」。所以顯示前先把重複的縣市與區拔掉。
+ *
+ * 兩邊都沒有才回 null，由畫面自己決定要寫什麼（例如「地址現場提供」）。
  */
-export function publicRatio(listing: Pick<Listing, "ping" | "mainArea">) {
+export function displayAddress(
+  listing: Pick<Listing, "district" | "address" | "exactAddress">
+): string | null {
+  const best = listing.exactAddress?.trim() || listing.address?.trim() || "";
+  if (!best) return null;
+
+  let out = best.replace(/^[台臺]南市/, "");
+  if (listing.district && out.startsWith(listing.district)) {
+    out = out.slice(listing.district.length);
+  }
+  return out.trim() || best;
+}
+
+/**
+ * 有沒有公設可言。
+ *
+ * 透天厝與別墅是獨棟，權狀扣掉主建物剩下的是陽台、雨遮這類附屬建物，不是公設。
+ * 實測（2026-08-08）抽樣 1,000 筆，硬算的話透天與別墅都會得到「約 9%」——
+ * 那個數字看起來很像真的，拿去跟客戶談就是錯的。
+ *
+ * 所以用白名單：只有共用同一棟樓的型態才算。型態不明時回 null（不知道，不要猜）。
+ */
+const SHARED_BUILDING_TYPES = ["公寓", "華廈", "電梯大樓", "大樓"];
+const STANDALONE_TYPES = ["透天厝", "別墅", "透天"];
+
+export function hasPublicArea(listing: Pick<Listing, "houseType">): boolean | null {
+  const type = listing.houseType?.trim();
+  if (!type) return null;
+  if (SHARED_BUILDING_TYPES.some((item) => type.includes(item))) return true;
+  if (STANDALONE_TYPES.some((item) => type.includes(item))) return false;
+  return null;
+}
+
+export function publicRatio(listing: Pick<Listing, "ping" | "mainArea" | "houseType">) {
+  if (hasPublicArea(listing) !== true) return null;
   if (!listing.ping || !listing.mainArea || listing.mainArea >= listing.ping) return null;
   return (1 - listing.mainArea / listing.ping) * 100;
+}
+
+/**
+ * 公設那一欄要印什麼。
+ *
+ * 獨棟的寫「無公設」而不是「—」，這是刻意的：破折號讀起來是「資料缺了」，
+ * 而這裡的事實是「這種房子本來就沒有這個數字」。兩件事不能長得一樣 ——
+ * 之前就發生過把「欄位漏掛」誤看成「本來就沒有」。
+ */
+export function publicAreaLabel(
+  listing: Pick<Listing, "ping" | "mainArea" | "houseType">,
+  kind: "ratio" | "area"
+): string {
+  const shared = hasPublicArea(listing);
+  if (shared === false) return "無公設";
+  if (shared === null) return "—";
+
+  if (kind === "ratio") {
+    const ratio = publicRatio(listing);
+    return ratio === null ? "—" : `約 ${ratio.toFixed(0)}%`;
+  }
+
+  if (!listing.ping || !listing.mainArea || listing.mainArea >= listing.ping) return "—";
+  return `${(listing.ping - listing.mainArea).toFixed(1)} 坪`;
 }
 
 // ---------------------------------------------------------------
@@ -275,12 +389,7 @@ export function formatSeenAt(iso: string) {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("zh-TW", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(date);
+  return formatInTaipei(date, { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
 /**

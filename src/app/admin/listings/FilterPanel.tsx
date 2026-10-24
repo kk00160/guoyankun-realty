@@ -117,10 +117,29 @@ export default function FilterPanel({ query, defaultOpen }: { query: ListingQuer
                   {band.label}
                 </button>
               ))}
+              {/* 自訂價格用純文字欄，不用 type="number"。
+                  數字欄會長出上下箭頭，而價格是用打的不是用點的 ——
+                  一格一格點到 1500 沒有人受得了，滑鼠滾輪滑過去還會不小心改掉數字。
+                  inputMode="numeric" 讓手機仍然跳數字鍵盤，
+                  onChange 只留數字，貼進中文或符號不會變成搜不到東西的條件。 */}
               <span className="filter-custom">
-                <input value={minPrice} onChange={(e) => setMinPrice(e.target.value)} type="number" placeholder="最低" />
+                <input
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="最低"
+                />
                 <span>–</span>
-                <input value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} type="number" placeholder="最高" />
+                <input
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="最高"
+                />
                 <span>萬</span>
               </span>
             </div>
@@ -194,7 +213,7 @@ export default function FilterPanel({ query, defaultOpen }: { query: ListingQuer
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && search()}
-                placeholder="物件名稱或路名，例：崇明路"
+                placeholder="地址、路名、建案名都可以，例：永康區東橋七路"
                 maxLength={60}
               />
             </div>

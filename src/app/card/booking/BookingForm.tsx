@@ -6,15 +6,19 @@ import { INTENTS, MEET_TYPES, URGENCIES, type OpenDay } from "@/lib/booking";
 
 type SubmissionResult = {
   id: string;
+  caseNo: string;
   slotLabel: string;
-  previewFile: string | null;
 };
 
 export default function BookingForm() {
   const [days, setDays] = useState<OpenDay[]>([]);
   const [activeDate, setActiveDate] = useState("");
   const [slotIso, setSlotIso] = useState("");
-  const [meetType, setMeetType] = useState("");
+  /**
+   * 見面方式要先有預設值，因為時段長度跟著它走
+   * （電話 15 分、視訊 30 分、面談 60 分），沒有它就算不出有哪些格子。
+   */
+  const [meetType, setMeetType] = useState(MEET_TYPES[0].key as string);
   const [intent, setIntent] = useState<string[]>([]);
   const [urgency, setUrgency] = useState("");
   const [name, setName] = useState("");
@@ -26,16 +30,23 @@ export default function BookingForm() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
-  async function loadSlots() {
+  async function loadSlots(forMeetType: string) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/appointment/slots", { cache: "no-store" });
+      const response = await fetch(
+        `/api/appointment/slots?meetType=${encodeURIComponent(forMeetType)}`,
+        { cache: "no-store" }
+      );
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "無法讀取時段");
       const nextDays = Array.isArray(payload.days) ? payload.days : [];
       setDays(nextDays);
-      setActiveDate((current) => current || nextDays[0]?.date || "");
+      setActiveDate((current) => {
+        // 換了見面方式之後，原本選的那天可能已經沒有空格了。
+        const stillThere = nextDays.some((day: OpenDay) => day.date === current);
+        return stillThere ? current : nextDays[0]?.date || "";
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "無法讀取時段");
     } finally {
@@ -43,9 +54,14 @@ export default function BookingForm() {
     }
   }
 
+  /**
+   * 見面方式一改就要重新算時段：面談要連續 60 分鐘，電話 15 分鐘就夠，
+   * 放得下的格子完全不同。已選的時段也要清掉，否則會送出一個算完已經無效的時間。
+   */
   useEffect(() => {
-    void loadSlots();
-  }, []);
+    setSlotIso("");
+    void loadSlots(meetType);
+  }, [meetType]);
 
   const activeDay = useMemo(
     () => days.find((day) => day.date === activeDate),
@@ -87,9 +103,10 @@ export default function BookingForm() {
       });
       const payload = await response.json();
       if (!response.ok) {
+        // 409 = 這個時段剛被別人訂走。重抓一次時段，客戶才不會一直撞同一格。
         if (response.status === 409) {
           setSlotIso("");
-          await loadSlots();
+          await loadSlots(meetType);
         }
         throw new Error(payload.error || "預約未完成，請稍後重試。");
       }
@@ -107,26 +124,22 @@ export default function BookingForm() {
         <div className="page-heading">
           <Link href="/card">回電子名片</Link>
           <h1>預約完成</h1>
-          <p>資料已寫入本機預約後台，課堂版不會真的寄信或通知客戶。</p>
+          <p>時段已為您保留，我會在約定時間與您聯繫。</p>
         </div>
         <div className="form-success">
           <strong>已保留時段：</strong>
           <br />
           {result.slotLabel}
-        </div>
-        <div className="choice-row">
-          <Link className="button" href="/admin/appointments">查看預約後台</Link>
-          {result.previewFile ? (
-            <a
-              className="button-secondary"
-              href={`/api/appointment/preview?file=${encodeURIComponent(result.previewFile)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              查看確認信預覽
-            </a>
+          {result.caseNo ? (
+            <>
+              <br />
+              <span className="case-no">案件編號 {result.caseNo}</span>
+            </>
           ) : null}
         </div>
+        <p className="form-hint">
+          需要改期或取消，請直接來電或加 LINE 告訴我，報一下案件編號就可以。
+        </p>
       </main>
     );
   }

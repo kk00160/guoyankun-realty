@@ -19,7 +19,7 @@ const BOOKING_ENABLED = process.env.BOOKING_ENABLED === "true";
 const TOUR_ENABLED = process.env.TOUR_ENABLED === "true";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 
-type Feature = "booking" | "tour" | "console" | null;
+type Feature = "booking" | "tour" | "console" | "lead" | null;
 
 /**
  * 這個路徑屬於哪個功能。
@@ -29,7 +29,21 @@ type Feature = "booking" | "tour" | "console" | null;
  *    這是刻意的：忘了登記的後果是「功能不通」，而不是「沒有防護就上線」。
  */
 function featureOf(pathname: string): Feature {
+  /**
+   * 首頁表單的來客名單。
+   *
+   * /api/lead 是公開的收件口（客戶送出用），/admin/leads 是你自己看的名單。
+   *
+   * 刻意沒有功能開關：關掉它的後果是客戶填了表單、資料安靜地掉在地上，
+   * 而你不會知道有人來過。這個代價比任何開關能換到的好處都嚴重。
+   * 沒有開關不等於沒有防護 —— /admin/leads 一樣要密碼（見 isAdminPath）。
+   */
+  if (pathname === "/api/lead" || pathname.startsWith("/admin/leads") || pathname.startsWith("/api/admin/leads")) {
+    return "lead";
+  }
+
   // 帶看助手。/tour 與 /api/tour 是給買方的公開路徑，不需要密碼但受開關管制。
+  // ⚠️ 這條用 /api/admin 一網打盡，所以任何「不屬於帶看」的 /api/admin/* 都必須寫在它前面。
   if (
     pathname.startsWith("/tour") ||
     pathname.startsWith("/api/tour") ||
@@ -40,12 +54,29 @@ function featureOf(pathname: string): Feature {
     return "tour";
   }
 
-  // 線上預約。/api/appointment（單數，客戶送出用）與 /api/appointments（複數，後台用）都涵蓋。
+  /**
+   * 線上預約的「後台側」：預約總表、狀態更新、Google 日曆綁定。
+   *
+   * 刻意不受 BOOKING_ENABLED 管制，因為要先設定好才談得上對外開放 ——
+   * 綁定日曆得先進後台，若後台也被開關擋住就變成雞生蛋。
+   * 而且開關關著的時候，你正需要進來看有沒有殘留的預約要處理。
+   *
+   * 沒有開關不等於沒有防護：這些路徑一律要密碼（見 isAdminPath），
+   * 只有 google/callback 例外，它靠 state cookie 驗證。
+   */
   if (
-    pathname.startsWith("/card/booking") ||
-    pathname.startsWith("/api/appointment") ||
-    pathname.startsWith("/admin/appointments")
+    pathname.startsWith("/admin/appointments") ||
+    pathname.startsWith("/api/appointments") ||
+    pathname.startsWith("/api/appointment/google")
   ) {
+    return "console";
+  }
+
+  /**
+   * 線上預約的「客戶側」：選時段的頁面與送出用的 API。
+   * 這才是 BOOKING_ENABLED 真正要管的東西 —— 要不要對客戶開放。
+   */
+  if (pathname.startsWith("/card/booking") || pathname.startsWith("/api/appointment")) {
     return "booking";
   }
 
@@ -72,10 +103,21 @@ function featureOf(pathname: string): Feature {
  * 靠的是猜不到、可撤銷、有到期日的 token。
  */
 function isAdminPath(pathname: string) {
+  /**
+   * ⚠️ 例外：Google 授權完成後的轉址。
+   *
+   * Google 是用瀏覽器把使用者送回來的，不會帶 HTTP Basic 的帳密，
+   * 放進受保護路徑會被 401 擋掉，授權永遠完成不了。
+   * 它的防護是 state cookie（見該路由），不是密碼。
+   */
+  if (pathname.startsWith("/api/appointment/google/callback")) return false;
+
   return (
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/api/appointments")
+    pathname.startsWith("/api/appointments") ||
+    // 發起授權必須是你本人，否則任何人都能對你的帳號啟動綁定流程。
+    pathname.startsWith("/api/appointment/google/auth")
   );
 }
 

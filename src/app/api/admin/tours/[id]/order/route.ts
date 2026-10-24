@@ -7,13 +7,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * 排看房順序。
+ * 排看房順序。這支有兩種用法，共用同一個 visit_order 欄位：
  *
- * scope 決定要排哪些物件：
- *   interested（預設）：只排買方勾「想看」的
- *   remaining        ：排掉「略過」以外的全部（買方還沒回覆時用這個）
+ *   { order: [listingId, …] }   手動：後台按上下箭頭，畫面上的順序就是答案
+ *   { scope: "interested" }     自動：只排買方勾「想看」的
+ *   { scope: "remaining" }      自動：排掉「略過」以外的全部（買方還沒回覆時用）
  *
- * 沒有經緯度的物件排不進去，會原樣回報給你，讓你回後台補地址而不是默默漏掉。
+ * 手動優先。理由：自動排的是「路程最短」，但實際帶看還有屋主方便的時間、
+ * 想壓軸的那間、順路吃飯 —— 那些演算法不知道。自動排完再手動微調，
+ * 後按的那個就該蓋掉前一個。
+ *
+ * 自動排時沒有經緯度的物件排不進去，會原樣回報給你，
+ * 讓你回後台補地址而不是默默漏掉。
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -23,6 +28,23 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const tour = await getTour(id);
     if (!tour) return bad("找不到這張帶看單。", 404);
+
+    // --- 手動排序 ---
+    // 不算路線、不回 mapUrls：這裡是「我說了算」，不需要再給一次演算法的意見。
+    if (Array.isArray(body.order)) {
+      const manual = (body.order as unknown[])
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+        .slice(0, 200);
+      if (manual.length === 0) return bad("沒有收到要排的物件。");
+
+      // saveVisitOrder 會再對一次這些 id 是不是真的在這張帶看單裡，
+      // 回傳的是真的存進去的那些。
+      const saved = await saveVisitOrder(id, [...new Set(manual)]);
+      if (saved.length === 0) {
+        return bad("這些物件已經不在這張帶看單裡了，順序沒有存。重新整理這一頁看目前的內容。");
+      }
+      return ok({ order: saved });
+    }
 
     const entries = await listTourEntries(id);
     const picked = entries.filter((entry) =>
@@ -70,7 +92,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return ok({
       order: ordered.map((point) => point.id),
       summary: routeSummary(ordered, origin),
-      mapUrls: googleMapsUrls(ordered, origin),
+      // 出發點沒有座標時，用它的名字當導航起點（見 googleMapsUrls 的說明）。
+      mapUrls: googleMapsUrls(ordered, origin, tour.originLabel ?? undefined),
       missingCoords
     });
   } catch (error) {

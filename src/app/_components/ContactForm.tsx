@@ -9,13 +9,21 @@ const TIME_SLOTS = ["不限", "上午 (09-12)", "下午 (12-18)", "晚上 (18-21
 /**
  * 客戶預約表單。
  *
- * 不送到伺服器：目前沒有資料庫，寫入雲端會遺失。
- *
  * 流程刻意設計成「先複製、再加好友」：
  * 新客戶通常還沒加過好友，若直接開啟 LINE 傳訊畫面，
  * 聯絡人名單裡找不到收件者，訊息根本送不出去。
  * 因此改為把填寫內容複製到剪貼簿後開啟加好友頁面，
  * 客戶加完好友貼上即可送出。
+ *
+ * 2026-08 補上：同時送一份到 /api/lead 存進資料庫。
+ *
+ * 為什麼補這個 —— 原本只有「複製 + 開 LINE」，客戶如果填完就關掉、
+ * 或懶得加好友，那筆資料就永遠消失，後台完全不知道有人來過。
+ * 現在畫面上的體驗一模一樣，但你在後台的來客名單看得到每一筆。
+ *
+ * ⚠️ 送出資料庫這件事「絕對不能擋住」客戶的流程：
+ * 網路慢、資料庫掛掉、離線都不該讓客戶看到錯誤或等待。
+ * 所以下面是先把請求丟出去（不 await），再照原本的步驟走完。
  */
 export default function ContactForm() {
   const [service, setService] = useState<string>(SERVICES[0]);
@@ -29,6 +37,23 @@ export default function ContactForm() {
     const name = String(data.get("name") ?? "").trim();
     const phone = String(data.get("phone") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
+
+    // 先丟出去，不等回應。失敗也只寫進主控台，客戶那邊完全無感。
+    void fetch("/api/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        phone,
+        service,
+        timeSlot,
+        message,
+        website: String(data.get("website") ?? "") // 蜜罐，真人不會填
+      }),
+      keepalive: true // 客戶送出後馬上跳去 LINE，用這個讓請求在頁面離開後仍送得完
+    }).catch(() => {
+      /* 這裡刻意吞掉：客戶的下一步是加 LINE，不該因為我們的後台狀況被打斷。 */
+    });
 
     const lines = [
       "您好，我想預約諮詢：",
@@ -118,6 +143,13 @@ export default function ContactForm() {
           rows={4}
           placeholder="例如：想看東橋重劃區三房、預算 1200 萬內（選填）"
         />
+      </div>
+
+      {/* 蜜罐：真人看不到也不會填，自動填表的機器人會。中了就在伺服器端丟掉。
+          用 CSS 藏起來而不是 type="hidden"，因為機器人多半會跳過 hidden。 */}
+      <div className="lead-trap" aria-hidden="true">
+        <label htmlFor="lead-website">網站</label>
+        <input id="lead-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
       <button type="submit" className="lead-submit">送出預約</button>

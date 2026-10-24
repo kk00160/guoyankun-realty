@@ -12,6 +12,8 @@
  * 純資料 + 純函式，client 與 server 共用。
  */
 
+import { TAINAN_DISTRICTS } from "@/lib/listings";
+
 /** 售價級距。照 591 篩選器的分法，台南的物件幾乎都落在這幾檔。 */
 export const PRICE_BANDS = [
   { key: "0-500", label: "500萬以下", min: null, max: 500 },
@@ -167,6 +169,66 @@ export function bandRange(
 }
 
 /** 給畫面用的一句話摘要：「東區、永康區 · 1000-1250萬 · 3房」。 */
+// ---------------------------------------------------------------
+// 關鍵字解析
+// ---------------------------------------------------------------
+
+export type ParsedKeyword = {
+  /** 從關鍵字裡認出來的行政區，例：「永康區東橋七路」→ ["永康區"] */
+  districts: string[];
+  /** 剩下要拿去比對的詞。多個詞之間是 AND。 */
+  terms: string[];
+};
+
+/**
+ * 把使用者打的一串字拆成「行政區」＋「關鍵詞」。
+ *
+ * 為什麼需要這一步：
+ * 資料庫裡 district 是獨立欄位，address 只存到路巷（例：district=永康區、address=東橋七路）。
+ * 所以整串「永康區東橋七路」拿去比對 address 永遠是 0 筆 ——
+ * 而那正是一般人打地址最自然的寫法。實測：
+ *   「東橋七路」   → 67 筆
+ *   「永康區東橋七路」→ 0 筆   ← 同一個地方，多打三個字就全沒了
+ *
+ * 拆完之後「永康區」會變成行政區條件，「東橋七路」才拿去比對地址。
+ *
+ * ⚠️ 只認完整的區名（帶「區」字），不認簡稱。
+ * 因為「六甲頂」是永康區的地名，認簡稱的話會被誤判成六甲區 ——
+ * 那種錯不會報錯，只會安靜地給你錯的搜尋結果。
+ */
+export function parseKeyword(keyword: string): ParsedKeyword {
+  // 全形空白、連續空白統一；縣市前綴直接拿掉（資料庫裡沒存縣市）。
+  let rest = keyword.replace(/　/g, " ").replace(/[台臺]南市/g, " ").trim();
+
+  // 長的區名先比對：「南區」是「安南區」的一部分，順序錯了會把安南區拆成「安」+「南區」。
+  const byLength = [...TAINAN_DISTRICTS].sort((a, b) => b.length - a.length);
+  const districts: string[] = [];
+  for (const district of byLength) {
+    if (rest.includes(district)) {
+      districts.push(district);
+      rest = rest.split(district).join(" ");
+    }
+  }
+
+  const terms = rest
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .slice(0, 5); // 太多詞只會越搜越空，也讓查詢變長
+
+  return { districts, terms };
+}
+
+/** 把解析結果講成人話，顯示在結果上方，讓你看得到系統怎麼理解你打的字。 */
+export function explainKeyword(keyword: string): string {
+  if (!keyword.trim()) return "";
+  const { districts, terms } = parseKeyword(keyword);
+  const parts: string[] = [];
+  if (districts.length) parts.push(`行政區＝${districts.join("、")}`);
+  if (terms.length) parts.push(`關鍵字＝${terms.join(" ＋ ")}`);
+  return parts.join("　·　");
+}
+
 export function describeQuery(query: ListingQuery) {
   const parts: string[] = [];
   if (query.districts.length) parts.push(query.districts.join("、"));

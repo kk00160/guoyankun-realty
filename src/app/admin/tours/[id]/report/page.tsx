@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isDbConfigured } from "@/lib/db";
+import { formatInTaipei } from "@/lib/format-date";
 import {
   canRoute,
+  displayAddress,
   formatAge,
   formatPing,
   formatPrice,
@@ -19,7 +21,9 @@ import {
   routeLegs,
   routeSummary
 } from "@/lib/route";
+import { pickPlanEntries } from "@/lib/tour-plan";
 import { getTour, listTourEntries } from "@/lib/tour-store";
+import CopyBuyerLink from "./CopyBuyerLink";
 import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -39,12 +43,12 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
   const entries = await listTourEntries(id);
 
   /**
-   * 帶看單上要放哪幾間：
-   * 買方勾過「想看」就只放那些；還沒表態就放「略過」以外的全部。
-   * 這樣不管買方有沒有回覆，你都印得出一張可以帶出門的單子。
+   * 帶看單上要放哪幾間。
+   *
+   * 這份篩選跟買方的行程連結 /tour/[token]/plan 共用同一支函式，
+   * 兩邊的物件與順序必須逐字一致 —— 見 src/lib/tour-plan.ts 的說明。
    */
-  const interested = entries.filter((entry) => entry.buyerChoice === "interested");
-  const picked = interested.length > 0 ? interested : entries.filter((entry) => entry.buyerChoice !== "rejected");
+  const picked = pickPlanEntries(entries);
 
   const origin: RoutePoint | undefined =
     tour.originLat !== null && tour.originLng !== null
@@ -64,7 +68,7 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
 
   const legs = routeLegs(points, origin);
   const summary = routeSummary(points, origin);
-  const mapUrls = googleMapsUrls(points, origin);
+  const mapUrls = googleMapsUrls(points, origin, tour.originLabel ?? undefined);
 
   /**
    * 每一站對應「從上一站過來」的那一段。
@@ -80,26 +84,31 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
     if (origin) return legs[position] ?? null; // 有出發點時 legs[0] 是「出發點 → 第一站」
     return position === 0 ? null : legs[position - 1] ?? null;
   };
-  const printedAt = new Intl.DateTimeFormat("zh-TW", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
+  const printedAt = formatInTaipei(new Date(), { year: "numeric", month: "2-digit", day: "2-digit" });
 
   return (
     <div className="report-page">
       <div className="report-toolbar no-print">
         <Link className="button-secondary" href={`/admin/tours/${tour.id}`}>
-          回帶看單
+          回帶看紀錄
         </Link>
         <PrintButton />
+        <CopyBuyerLink token={tour.token} />
         {mapUrls.map((url, index) => (
           <a key={url} className="button-secondary" href={url} target="_blank" rel="noreferrer">
             {mapUrls.length > 1 ? `導航第 ${index + 1} 段` : "Google Maps 導航"}
           </a>
         ))}
       </div>
+
+      {/* 這一頁是 /admin 底下的後台頁，網址列複製出去買方是打不開的（會要密碼）。
+          實際發生過，所以這句話要直接寫在畫面上，而不是等人踩到。 */}
+      <p className="report-hint no-print">
+        這一頁是<b>你自己看的、印出來帶出門的</b>。網址不能直接傳給買方 —— 那是後台網址，
+        他打開會被要求輸入密碼。要給買方看行程，按上面的<b>「複製行程連結」</b>：
+        買方打開就是這張單子的手機版，每一站都有「導航到這一站」，不會再出現想看／略過。
+        （要讓買方重新挑物件，那是<b>帶看日記裡的「複製挑選連結」</b>，是另一條。）
+      </p>
 
       <article className="report-sheet">
         <header className="report-head">
@@ -131,8 +140,10 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
                 <span className="report-order">{index + 1}</span>
                 <div>
                   <h2>{entry.listing.title}</h2>
+                  {/* 有門牌就印門牌。你補的正確地址優先，其次才是來源的巷弄地址 ——
+                      「地址現場提供」只保留給真的兩邊都沒有的那幾筆。 */}
                   <p className="report-address">
-                    {entry.listing.district ?? ""}　{entry.listing.address ?? "地址現場提供"}
+                    {entry.listing.district ?? ""}　{displayAddress(entry.listing) ?? "地址現場提供"}
                   </p>
                 </div>
                 <div className="report-price">{formatPrice(entry.listing.totalPrice)}</div>
@@ -187,7 +198,6 @@ export default async function TourReportPage({ params }: { params: Promise<{ id:
                   <a className="button-secondary" href={mapDirectionsUrl(place)} target="_blank" rel="noreferrer">
                     導航到這一站
                   </a>
-                  <span>{place.hint}</span>
                 </p>
               )}
 

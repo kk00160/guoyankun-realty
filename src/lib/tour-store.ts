@@ -5,7 +5,8 @@ import {
   PAGE_SIZE,
   PING_BANDS,
   PRICE_BANDS,
-  bandRange
+  bandRange,
+  parseKeyword
 } from "@/lib/listing-filters";
 import type { ListingUpdate, TourUpdate } from "@/lib/db-schema";
 import {
@@ -48,11 +49,31 @@ function readList<T>(
   return readWithRetry<T[]>(run, what);
 }
 
+/**
+ * 讀單筆。查不到要回 null，不能回空陣列。
+ *
+ * ⚠️ 這裡把結果包進 { value } 是必要的，不是多此一舉。
+ *
+ * readWithRetry 內部寫的是 `return (data ?? []) as T` —— 那是為了「讀清單」設計的，
+ * 查不到就給空陣列很合理。但單筆查詢查不到時 data 也是 null，
+ * 同一行就會回傳 `[]`，而 `[]` 是 truthy。
+ *
+ * 實際造成的災難（2026-08-07）：買方拿一條已經被刪掉的連結進來，
+ * getTourByToken 收到 `[]` 當成「有這筆」，toTour([]) 生出一個 id 是 "undefined" 的空殼，
+ * 再拿它去查物件時 Postgres 噴 uuid 格式錯 —— 買方看到的是
+ * 「系統暫時連不上，請稍後再開一次」，於是他會一直重試一條永遠不會活過來的連結。
+ * 正確的訊息應該是「這個連結無效」。
+ *
+ * 包一層物件之後 data 永遠不是 null，那行 `?? []` 就碰不到我們的值。
+ */
 function readOne<T>(
   run: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
   what: string
-) {
-  return readWithRetry<T | null>(() => run() as never, what) as Promise<T | null>;
+): Promise<T | null> {
+  return readWithRetry<{ value: T | null }>(
+    () => Promise.resolve(run()).then(({ data, error }) => ({ data: { value: data }, error })),
+    what
+  ).then((wrapped) => wrapped.value);
 }
 
 /**
@@ -67,8 +88,27 @@ function readCount(
   what: string
 ) {
   return readWithRetry<number>(
-    () => Promise.resolve(run()).then(({ count, error }) => ({ data: count ?? 0, error })),
+    () => Promise.resolve(run()).then(({ count, error }) => ({ data: normaliseCount(count, what), error })),
     what
+  );
+}
+
+/**
+ * count 查詢回 null 時要當成錯誤，不可以當成 0。
+ *
+ * 實測（2026-08-07）：對一張「不存在的資料表」下 head + count 的查詢，
+ * PostgREST 回的是 HTTP 204、count = null、error = null ——
+ * 跟「表存在但是空的」完全分不出來。
+ *
+ * 寫成 count ?? 0 的話，畫面會很有自信地顯示「累計來客 0 筆」，
+ * 而真相是那張表根本還沒建。這種安靜的錯誤比噴一個錯誤嚴重得多：
+ * 你會以為沒人來過，實際上是資料根本沒在存。
+ */
+function normaliseCount(count: number | null, what: string): number {
+  if (typeof count === "number") return count;
+  throw new Error(
+    `${what}讀不到數量（資料表可能還不存在）。` +
+      "到 Supabase 的 SQL Editor 跑一次 supabase/ 底下的 schema 檔就會好。"
   );
 }
 
@@ -98,7 +138,14 @@ export async function listListings(query: ListingQuery): Promise<ListingPage> {
     if (query.status === "all") q = q.in("status", ["active", "needs_review"]);
     else q = q.eq("status", query.status);
 
-    if (query.districts.length) q = q.in("district", query.districts);
+    /**
+     * 行政區條件 = 勾選的 ∪ 從關鍵字裡認出來的。
+     * 打「永康區東橋七路」的時候，「永康區」要當成行政區條件，
+     * 不能整串丟去比對 address（那樣永遠 0 筆，見 parseKeyword 的說明）。
+     */
+    const parsed = parseKeyword(query.keyword);
+    const districts = [...new Set([...query.districts, ...parsed.districts])];
+    if (districts.length) q = q.in("district", districts);
     if (query.houseTypes.length) q = q.in("house_type", query.houseTypes);
 
     // 自訂售價優先，填了就蓋過級距。
@@ -118,10 +165,30 @@ export async function listListings(query: ListingQuery): Promise<ListingPage> {
       q = q.or(prefixes.map((n) => `layout.like.${n}房%`).join(","));
     }
 
-    if (query.keyword) {
-      // 逗號與括號是 PostgREST 的 or() 語法字元，先清掉避免查詢被拆壞。
-      const safe = query.keyword.replace(/[%,()]/g, "");
-      if (safe) q = q.or(`title.ilike.%${safe}%,address.ilike.%${safe}%`);
+    /**
+     * 關鍵字：每個詞都要命中（AND），每個詞可以命中四個欄位其中之一（OR）。
+     *
+     * 為什麼是四個欄位：以前只比對 title 與 address，社區名完全搜不到 ——
+     * 實測 300 筆有社區名的物件裡，有 189 筆的社區名根本沒出現在標題裡，
+     * 等於打「上東城」也找不到上東城。社區名存在 raw 這個 jsonb 裡，
+     * 用 raw->>community_name 就查得到（已實測可行）。
+     *
+     * 為什麼多個詞要 AND：打「東橋 三房」以前會被當成一整串字比對，結果 0 筆。
+     * 分開之後才是「東橋」而且「三房」。
+     * PostgREST 的多次 .or() 之間本來就是 AND，剛好是我們要的。
+     */
+    for (const term of parsed.terms) {
+      // 逗號、括號、百分比是 PostgREST or() 的語法字元，先清掉避免查詢被拆壞。
+      const safe = term.replace(/[%,()]/g, "");
+      if (!safe) continue;
+      q = q.or(
+        [
+          `title.ilike.%${safe}%`,
+          `address.ilike.%${safe}%`,
+          `district.ilike.%${safe}%`,
+          `raw->>community_name.ilike.%${safe}%`
+        ].join(",")
+      );
     }
 
     return q;
@@ -170,6 +237,7 @@ export type ListingInput = {
   title: string;
   district?: string | null;
   address?: string | null;
+  exactAddress?: string | null;
   lat?: number | null;
   lng?: number | null;
   totalPrice?: number | null;
@@ -271,6 +339,7 @@ export async function patchListing(id: string, input: Partial<ListingInput>) {
   if (input.title !== undefined) patch.title = input.title;
   if (input.district !== undefined) patch.district = input.district;
   if (input.address !== undefined) patch.address = input.address;
+  if (input.exactAddress !== undefined) patch.exact_address = input.exactAddress;
   if (input.lat !== undefined) patch.lat = input.lat;
   if (input.lng !== undefined) patch.lng = input.lng;
   if (input.layout !== undefined) patch.layout = input.layout;
@@ -291,6 +360,14 @@ export type TourWithCount = Tour & {
   itemCount: number;
   interestedCount: number;
   pendingCount: number;
+  /**
+   * 只有封面照的物件數。
+   *
+   * 批次匯入走清單 API，一次只帶回一張封面；完整相簿要一筆一筆開明細頁補（npm run fill）。
+   * 這個數字要顯示在有「複製連結」按鈕的地方 ——
+   * 否則整份只有一張照片的清單會直接傳到買方手機上，而畫面上完全沒有任何提示。
+   */
+  thinCount: number;
 };
 
 export async function listTours(): Promise<TourWithCount[]> {
@@ -310,7 +387,7 @@ export async function listTours(): Promise<TourWithCount[]> {
     () =>
       db()
       .from("tour_items")
-      .select("tour_id, buyer_choice")
+      .select("tour_id, listing_id, buyer_choice")
       .in(
         "tour_id",
         tours.map((tour) => tour.id)
@@ -318,13 +395,28 @@ export async function listTours(): Promise<TourWithCount[]> {
     "讀取帶看物件"
   );
 
+  // 只撈 id + images 來數「照片幾張」。一次撈完再在 JS 裡對，
+  // 比每張帶看單各發一次查詢便宜得多。
+  const listingIds = [...new Set(items.map((item) => item.listing_id))];
+  const photoCount = new Map<string, number>();
+  if (listingIds.length > 0) {
+    const listings = await readList(
+      () => db().from("listings").select("id, images").in("id", listingIds),
+      "讀取物件照片數"
+    );
+    for (const row of listings) {
+      photoCount.set(String(row.id), Array.isArray(row.images) ? row.images.length : 0);
+    }
+  }
+
   return tours.map((tour) => {
     const own = items.filter((item) => item.tour_id === tour.id);
     return {
       ...tour,
       itemCount: own.length,
       interestedCount: own.filter((item) => item.buyer_choice === "interested").length,
-      pendingCount: own.filter((item) => item.buyer_choice === "pending").length
+      pendingCount: own.filter((item) => item.buyer_choice === "pending").length,
+      thinCount: own.filter((item) => (photoCount.get(item.listing_id) ?? 0) <= 1).length
     };
   });
 }
@@ -395,6 +487,20 @@ export async function patchTour(
 
   const { error } = await db().from("tours").update(row).eq("id", id);
   if (error) throw new Error(`更新帶看單失敗：${error.message}`);
+}
+
+/**
+ * 整筆刪掉。
+ *
+ * tour_items.tour_id 有 on delete cascade（見 schema.sql），
+ * 所以底下的物件關聯會一起清乾淨，不會留下孤兒列。
+ * 案源本身（listings）不會被動到 —— 那是共用的，只是這次沒帶到而已。
+ *
+ * 沒有「復原」。刪掉之後那條買方連結也跟著失效。
+ */
+export async function deleteTour(id: string) {
+  const { error } = await db().from("tours").delete().eq("id", id);
+  if (error) throw new Error(`刪除帶看紀錄失敗：${error.message}`);
 }
 
 /** 換一把新鑰匙：舊連結立刻失效。買方把連結轉傳出去時用。 */
@@ -507,7 +613,6 @@ export async function markTourSubmitted(tourId: string) {
   if (error) console.error("[tour] 標記送出失敗：", error.message);
 }
 
-/** 買方在手機上按「想看／略過」。這是唯一一個不需要密碼就能寫入的動作。 */
 export async function setBuyerChoice(tourId: string, listingId: string, choice: BuyerChoice) {
   const { error } = await db()
     .from("tour_items")
@@ -521,16 +626,48 @@ export async function setBuyerChoice(tourId: string, listingId: string, choice: 
   if (error) throw new Error(`儲存選擇失敗：${error.message}`);
 }
 
-/** 排完路線後把順序寫回去，帶看單與報告都照這個順序顯示。 */
-export async function saveVisitOrder(tourId: string, orderedListingIds: string[]) {
-  for (const [index, listingId] of orderedListingIds.entries()) {
-    const { error } = await db()
-      .from("tour_items")
-      .update({ visit_order: index + 1 })
-      .eq("tour_id", tourId)
-      .eq("listing_id", listingId);
-    if (error) throw new Error(`儲存看房順序失敗：${error.message}`);
-  }
+/**
+ * 把看房順序寫回去。帶看單、行程連結與報告都照這個順序顯示。
+ *
+ * 兩個地方會呼叫：自動排路線，以及後台手動按上下箭頭。兩邊共用同一支，
+ * 順序的寫法只有這一種，不會有「自動排的」跟「手動排的」兩套規則。
+ *
+ * 一次 upsert 寫完，不要一筆一筆 update：手動微調是連續按的動作，
+ * 每按一下就跟新加坡來回 N 趟，八間房子就是八趟，按起來會有明顯延遲。
+ *
+ * 先讀一次現有的 item 不是多餘的 —— upsert 碰到不在這張帶看單裡的
+ * listing_id 會「新增」一筆，等於憑空把一間房子塞進帶看單。先對過再寫。
+ */
+export async function saveVisitOrder(tourId: string, orderedListingIds: string[]): Promise<string[]> {
+  const existing = await readList(
+    () => db().from("tour_items").select("listing_id").eq("tour_id", tourId),
+    "讀取帶看物件"
+  );
+  const known = new Set(existing.map((row) => String(row.listing_id)));
+
+  const ordered = orderedListingIds.filter((listingId) => known.has(listingId));
+  const inOrder = new Set(ordered);
+
+  // 送來的沒有一筆對得上（例如另一個分頁把整張帶看單換掉了）就什麼都不要動。
+  // 下面會把沒排到的站號清成 null —— 在這種情況下那等於默默把整張單的順序洗掉。
+  if (ordered.length === 0) return [];
+
+  const rows = [
+    ...ordered.map((listingId, index) => ({ tour_id: tourId, listing_id: listingId, visit_order: index + 1 })),
+    // 沒排進這次順序的，站號一律清掉。
+    // 不清的話會留下上一次排路線的舊站號 —— 那間房子明明沒排進去，
+    // 重新整理之後卻插在中間，而且畫面上完全看不出來為什麼。
+    ...[...known]
+      .filter((listingId) => !inOrder.has(listingId))
+      .map((listingId) => ({ tour_id: tourId, listing_id: listingId, visit_order: null }))
+  ];
+
+  const { error } = await db().from("tour_items").upsert(rows, { onConflict: "tour_id,listing_id" });
+  if (error) throw new Error(`儲存看房順序失敗：${error.message}`);
+
+  // 回傳「真的存進去的那些」，不要把呼叫端送來的原樣丟回去 ——
+  // 那會讓一筆都沒對上的情況看起來像成功了。
+  return ordered;
 }
 
 export async function setAgentNote(tourId: string, listingId: string, note: string) {

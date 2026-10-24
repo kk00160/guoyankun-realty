@@ -194,28 +194,44 @@ function navTarget(point: RoutePoint) {
  *
  * @returns 一或多條連結。一趟帶看通常只會有一條。
  */
-export function googleMapsUrls(ordered: RoutePoint[], origin?: RoutePoint): string[] {
+export function googleMapsUrls(
+  ordered: RoutePoint[],
+  origin?: RoutePoint,
+  /**
+   * 只有名字、沒有座標的出發點，例如「門市」。
+   *
+   * 後台的出發點欄位刻意只剩一個文字框 —— 沒有人會手動去查自己門市的經緯度再填進來。
+   * 沒有座標就算不進里程推估，但拿來當導航連結的起點完全夠用：
+   * Google Maps 認得地名，而查詢字串會補上「台南市」前綴（見 mapTarget 的說明）。
+   * 有帶座標的 origin 時以座標為準。
+   */
+  originQuery?: string
+): string[] {
+  const textOrigin = origin ? null : originQuery?.trim();
   const stops = origin ? [origin, ...ordered] : ordered;
-  if (stops.length < 2) return [];
+
+  // 文字出發點沒有座標，塞不進 RoutePoint，所以在字串層級補到最前面。
+  const targets = [...(textOrigin ? [localise(null, textOrigin)] : []), ...stops.map(navTarget)];
+  if (targets.length < 2) return [];
 
   // 每段最多 = 起點 + 9 個中繼點 + 終點 = 11 個停靠點。
   const perSegment = MAX_WAYPOINTS + 2;
   const urls: string[] = [];
 
-  for (let start = 0; start < stops.length - 1; start += perSegment - 1) {
-    const segment = stops.slice(start, start + perSegment);
+  for (let start = 0; start < targets.length - 1; start += perSegment - 1) {
+    const segment = targets.slice(start, start + perSegment);
     if (segment.length < 2) break;
 
     const params = new URLSearchParams({
       api: "1",
-      origin: navTarget(segment[0]),
-      destination: navTarget(segment[segment.length - 1]),
+      origin: segment[0],
+      destination: segment[segment.length - 1],
       travelmode: "driving"
     });
 
     const waypoints = segment.slice(1, -1);
     if (waypoints.length > 0) {
-      params.set("waypoints", waypoints.map(navTarget).join("|"));
+      params.set("waypoints", waypoints.join("|"));
     }
 
     urls.push(`https://www.google.com/maps/dir/?${params.toString()}`);
@@ -244,13 +260,14 @@ export function googleMapsPlaceUrl(point: { lat: number; lng: number }) {
  * 二、就算有座標也不見得比較好。大樓的座標常落在屋頂或社區中心，
  *     而 Google Maps 認得「白金漢宮」這種建案名稱，會帶你到真正的大門口。
  *
- * 所以優先序是：社區名 → 地址 → 座標。
+ * 所以優先序是：你補的正確門牌 → 社區名 → 地址 → 座標。
+ * 第一項永遠贏 —— 那是你自己去過確認的，沒有理由讓程式再去猜。
  *
  * ⚠️ 每個查詢字串都硬性加上「台南市＋行政區」前綴，這是防呆不是裝飾：
  * 純文字搜尋最可怕的失敗不是搜不到，是安靜地搜到別的縣市的同名建案。
  * 加了前綴之後，最差的結果是落在正確的行政區裡，不會把人載到彰化。
  */
-export type MapTargetKind = "community" | "address" | "coords";
+export type MapTargetKind = "exact" | "community" | "address" | "coords";
 
 export type MapTarget = {
   kind: MapTargetKind;
@@ -264,6 +281,8 @@ export type MapTarget = {
 export type Locatable = {
   district: string | null;
   address: string | null;
+  /** 阿坤手動補的正確門牌。有填就一切以它為準。 */
+  exactAddress?: string | null;
   communityName: string | null;
   lat: number | null;
   lng: number | null;
@@ -280,8 +299,23 @@ function localise(district: string | null, text: string) {
 
 /** 這筆物件要怎麼導航。全部資訊都缺才會回 null。 */
 export function mapTarget(listing: Locatable): MapTarget | null {
+  const exact = listing.exactAddress?.trim();
   const community = listing.communityName?.trim();
   const address = listing.address?.trim();
+
+  /**
+   * 零、阿坤手動補的正確門牌 —— 有填就贏過所有自動判斷。
+   *
+   * 其他三種都是猜的：社區名可能撞名、地址只到巷口、座標可能落在屋頂。
+   * 這一欄是他自己去過、確認過的，沒有理由讓程式再去猜。
+   */
+  if (exact) {
+    return {
+      kind: "exact",
+      query: localise(listing.district, exact),
+      hint: `導航到 ${exact}（你自己確認過的門牌）`
+    };
+  }
 
   // 一、有社區名（多半是電梯大樓、華廈）：Google Maps 認得建案，直接帶到大門口。
   //

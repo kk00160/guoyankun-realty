@@ -8,62 +8,19 @@ import {
   formatPrice,
   formatSeenAt,
   formatUnitPrice,
-  publicRatio,
-  resizeImage
+  publicAreaLabel
 } from "@/lib/listings";
 import { PROFILE } from "@/lib/profile";
-import { mapPlaceUrl, mapTarget } from "@/lib/route";
 import type { BuyerChoice } from "@/lib/tour";
+import Gallery from "./Gallery";
 
 type Entry = {
   listingId: string;
   choice: BuyerChoice;
+  /** 阿坤排完看房順序之後才有值（1 開始）。 */
+  visitOrder: number | null;
   listing: Listing;
 };
-
-/**
- * 一間房的照片相簿。
- *
- * 用 CSS scroll-snap 做橫向滑動，不寫任何拖曳邏輯 ——
- * 手機上原生的慣性滑動比自己寫的順，而且不會跟頁面的上下捲動打架。
- */
-function Gallery({ photos, alt }: { photos: string[]; alt: string }) {
-  const [index, setIndex] = useState(0);
-
-  if (photos.length === 0) {
-    return <div className="buyer-photo buyer-photo-empty">沒有照片</div>;
-  }
-
-  return (
-    <div className="buyer-gallery">
-      <div
-        className="buyer-track"
-        onScroll={(event) => {
-          const el = event.currentTarget;
-          setIndex(Math.round(el.scrollLeft / el.clientWidth));
-        }}
-      >
-        {photos.map((src) => (
-          // 原生 img：不把來源網站的圖片轉存到自己的網域。
-          <img key={src} className="buyer-photo" src={resizeImage(src, "card")} alt={alt} loading="lazy" />
-        ))}
-      </div>
-
-      {photos.length > 1 && (
-        <>
-          <div className="buyer-counter">
-            {index + 1} / {photos.length}
-          </div>
-          <div className="buyer-dots">
-            {photos.slice(0, 12).map((src, i) => (
-              <span key={src} data-on={i === index} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 export default function BuyerPicker({
   token,
@@ -79,14 +36,39 @@ export default function BuyerPicker({
   entries: Entry[];
 }) {
   const [rows, setRows] = useState(entries);
-  const [name, setName] = useState(buyerName ?? "");
-  const [askName, setAskName] = useState(!buyerName);
+  /**
+   * 買方稱呼只拿來打招呼，而且只由阿坤在後台填。
+   *
+   * 以前一進來會先擋一個「先讓我知道怎麼稱呼你」的表單 —— 那一關拿掉了。
+   * 阿坤是把連結直接傳給認識的人，他本來就知道對方是誰；
+   * 為了一個他已經知道的答案，讓客戶多打一次字、多按一次按鈕，
+   * 只會讓人在還沒看到房子之前就先流失。
+   */
+  const name = buyerName ?? "";
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(Boolean(submittedAt));
 
   const interested = useMemo(() => rows.filter((row) => row.choice === "interested"), [rows]);
+
+  /**
+   * 帶看行程。阿坤在後台按過「排路線」之後，物件才會有看房順序。
+   *
+   * 有順序就代表行程定了 —— 這時候買方打開連結最想知道的是
+   * 「我們要看哪幾間、什麼順序」，而不是再挑一次。所以這一區放在最上面。
+   *
+   * 這裡只放純文字的順序摘要，刻意不放任何導航連結，也不放通往行程頁的入口。
+   * 導航屬於「已經談定要看哪幾間」之後的事，那是 /tour/[token]/plan 的職責，
+   * 而那條連結什麼時候發出去由阿坤決定 —— 不該從這一頁自己滲過去。
+   */
+  const plan = useMemo(
+    () =>
+      rows
+        .filter((row) => row.visitOrder !== null)
+        .sort((a, b) => (a.visitOrder ?? 0) - (b.visitOrder ?? 0)),
+    [rows]
+  );
 
   async function choose(listingId: string, choice: BuyerChoice) {
     const previous = rows;
@@ -120,7 +102,7 @@ export default function BuyerPicker({
       await fetch(`/api/tour/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "submit", buyerName: name.trim() })
+        body: JSON.stringify({ action: "submit" })
       });
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -131,43 +113,6 @@ export default function BuyerPicker({
     } finally {
       setBusy("");
     }
-  }
-
-  async function submitName(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!name.trim()) return;
-    setBusy("name");
-    try {
-      await fetch(`/api/tour/${encodeURIComponent(token)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ buyerName: name.trim() })
-      });
-    } catch {
-      // 存不進去也放行，不要卡住整個流程
-    } finally {
-      setAskName(false);
-      setBusy("");
-    }
-  }
-
-  if (askName) {
-    return (
-      <form className="buyer-gate" onSubmit={submitName}>
-        <h1>{title}</h1>
-        <p>這是{PROFILE.alias}幫你整理的物件清單。先讓我知道怎麼稱呼你：</p>
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          maxLength={50}
-          placeholder="例：陳先生"
-          autoFocus
-        />
-        <button type="submit" className="button" disabled={busy === "name" || !name.trim()}>
-          開始看清單
-        </button>
-      </form>
-    );
   }
 
   const open = openId ? rows.find((row) => row.listingId === openId) : null;
@@ -181,8 +126,9 @@ export default function BuyerPicker({
             <b>已經送出了，謝謝你 🙌</b>
             <p>
               {interested.length > 0
-                ? `你挑了 ${interested.length} 間想看的，我收到了，會盡快跟你聯絡安排時間。`
-                : "這次沒有特別想看的也沒關係，我知道了，再幫你留意更合適的。"}
+                ? `你挑了 ${interested.length} 間想看的`
+                : "這次沒有特別想看的也沒關係"}
+              ，我收到了，會盡快跟你聯絡安排時間。
               還想調整的話，直接改下面的選擇再送出一次就好。
             </p>
           </div>
@@ -199,13 +145,28 @@ export default function BuyerPicker({
 
       {message && <p className="form-message">{message}</p>}
 
+      {plan.length > 0 && (
+        <section className="buyer-plan">
+          <h2>看房行程</h2>
+          <p className="buyer-plan-note">這是我們要看的順序，時間我再跟你電話確認。</p>
+          <ol className="buyer-plan-list">
+            {plan.map((entry) => (
+              <li key={entry.listingId}>
+                <b>{entry.listing.title}</b>
+                <span>
+                  {entry.listing.district ?? ""}
+                  {entry.listing.address ? `　${entry.listing.address}` : ""}
+                  　{formatPrice(entry.listing.totalPrice)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <div className="buyer-list">
         {rows.map((entry) => {
           const listing = entry.listing;
-          const ratio = publicRatio(listing);
-          // 有社區名就用社區名找，沒有就用地址找。幾乎沒有物件有經緯度，
-          // 舊版只認經緯度，等於九成九的房子看不到「看地圖」。
-          const place = mapTarget(listing);
 
           return (
             <article key={entry.listingId} className="buyer-card" data-choice={entry.choice}>
@@ -263,7 +224,7 @@ export default function BuyerPicker({
                       [
                         ["權狀坪數", formatPing(listing.ping)],
                         ["主建物", listing.mainArea ? `${listing.mainArea.toFixed(1)} 坪` : "—"],
-                        ["公設比", ratio === null ? "—" : `約 ${ratio.toFixed(0)}%`],
+                        ["公設比", publicAreaLabel(listing, "ratio")],
                         ["格局", listing.layout ?? "—"],
                         ["屋齡", formatAge(listing.age)],
                         ["型態", listing.houseType ?? "—"],
@@ -284,16 +245,14 @@ export default function BuyerPicker({
 
                 {/* 刻意只留更新日期，不揭露資料從哪裡來。
                     日期不能拿掉：買方拿一個月前的價格來談，責任會落在阿坤身上。 */}
+                {/* ⚠️ 這一頁刻意沒有導航按鈕，不要「順手補回來」。
+                    這條連結問的是「你要不要看這間」，還沒到「怎麼去」那一步；
+                    在還沒決定要不要看的時候放一顆導航，等於暗示他可以自己先去看。
+                    導航只出現在行程頁 /tour/[token]/plan 與印出來的帶看單上 ——
+                    那兩個地方的前提都是「要看哪幾間已經談定了」。 */}
+
                 <p className="buyer-source">
                   資料更新於 {formatSeenAt(listing.lastSeenAt)}　·　實際屋況與價格以現場為準
-                  {place && (
-                    <>
-                      　·{" "}
-                      <a href={mapPlaceUrl(place)} target="_blank" rel="noreferrer">
-                        看地圖
-                      </a>
-                    </>
-                  )}
                 </p>
               </div>
 

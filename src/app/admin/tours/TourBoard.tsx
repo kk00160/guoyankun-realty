@@ -29,7 +29,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
       if (!response.ok) throw new Error(payload.error || "建立失敗");
 
       setTours((current) => [
-        { ...payload.tour, itemCount: 0, interestedCount: 0, pendingCount: 0 },
+        { ...payload.tour, itemCount: 0, interestedCount: 0, pendingCount: 0, thinCount: 0 },
         ...current
       ]);
       form.reset();
@@ -61,6 +61,35 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
     }
   }
 
+  /**
+   * 整筆刪掉。沒有復原，所以先問一次，訊息裡把「會連帶消失什麼」講清楚 ——
+   * 只說「確定刪除嗎」的話，沒人知道自己按下去會失去什麼。
+   */
+  async function removeTour(tour: TourWithCount) {
+    const warn =
+      `要刪掉「${tour.title}」嗎？\n\n` +
+      `· 這筆帶看紀錄裡的 ${tour.itemCount} 間物件關聯會一起消失\n` +
+      `· 買方勾選的結果也會消失\n` +
+      `· 你傳給買方的那條連結會立刻打不開\n\n` +
+      "案源庫裡的物件本身不會被刪掉。這個動作沒辦法復原。";
+    if (!window.confirm(warn)) return;
+
+    setBusy(tour.id);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/tours/${encodeURIComponent(tour.id)}`, { method: "DELETE" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "刪除失敗");
+
+      setTours((current) => current.filter((row) => row.id !== tour.id));
+      setMessage(`已刪除「${payload.title}」。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "刪除失敗");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function copyLink(token: string) {
     try {
       await navigator.clipboard.writeText(buyerTourUrl(token));
@@ -82,29 +111,26 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
 
       <form className="manual-form" onSubmit={createTour}>
         <div className="manual-grid">
-          <label>
-            這次要帶誰看 <span className="required">必填</span>
+          <label className="span-2">
+            {/* 標籤文字要包成「一個」元素。label 是 flex-column，
+                純文字節點跟 <span> 會變成兩個 flex item 被拆成上下兩行，
+                那一欄就比隔壁矮一截 —— 這就是表格看起來沒對齊的原因。 */}
+            <span className="field-label">
+              這次要帶誰看 <span className="required">必填</span>
+            </span>
             <input name="title" required maxLength={100} placeholder="陳先生 8/10 東區看房" />
           </label>
           <label>
-            買方稱呼
+            <span className="field-label">買方稱呼（選填，你自己看的）</span>
             <input name="buyerName" maxLength={50} placeholder="陳先生" />
           </label>
           <label>
-            連結有效天數
+            <span className="field-label">連結有效天數</span>
             <input name="days" type="number" min="1" max="180" defaultValue={30} />
           </label>
-          <label className="span-2">
-            出發點（選填，排路線時當起點）
+          <label className="span-4">
+            <span className="field-label">出發點（選填，導航連結會從這裡開始）</span>
             <input name="originLabel" maxLength={100} placeholder="例：門市、或當天約的碰面地點" />
-          </label>
-          <label>
-            出發點緯度
-            <input name="originLat" type="number" step="0.000001" placeholder="22.9908" />
-          </label>
-          <label>
-            出發點經度
-            <input name="originLng" type="number" step="0.000001" placeholder="120.2133" />
           </label>
         </div>
         <button type="submit" className="button" disabled={busy === "create"}>
@@ -130,6 +156,10 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
                   </p>
                 </div>
                 <div className="tag-row">
+                  {/* 照片沒補齊要在「複製連結」旁邊就看得到，不能等傳出去才發現。 */}
+                  {tour.thinCount > 0 && (
+                    <span className="tag tag-warn">{tour.thinCount} 間只有封面照</span>
+                  )}
                   {tour.submittedAt && <span className="tag tag-done">買方已送出</span>}
                   <span className="tag">{TOUR_STATUS_LABEL[tour.status]}</span>
                   <span className="tag">{open ? `${formatTourDate(tour.expiresAt)} 到期` : "已關閉"}</span>
@@ -160,6 +190,14 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
                     重新開啟
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="link-danger"
+                  onClick={() => removeTour(tour)}
+                  disabled={busy === tour.id}
+                >
+                  刪除
+                </button>
               </div>
             </article>
           );

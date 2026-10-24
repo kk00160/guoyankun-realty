@@ -1,6 +1,6 @@
 import { bad, fail, ok, optionalNumber, optionalText, readJson } from "@/lib/api";
 import { type TourStatus, defaultExpiry } from "@/lib/tour";
-import { getTour, patchTour, rotateTourToken } from "@/lib/tour-store";
+import { deleteTour, getTour, patchTour, rotateTourToken } from "@/lib/tour-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,5 +53,26 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return ok({ tour: await getTour(id) });
   } catch (error) {
     return fail("admin/tours/[id]", error);
+  }
+}
+
+/**
+ * 整筆刪掉。
+ *
+ * 沒有垃圾桶、沒有復原：這是刻意的。帶看紀錄不是重要到需要軟刪除的資料，
+ * 多一個「已刪除」狀態只會讓列表跟查詢都要一直記得排除它。
+ * 真正的保險做在前面 —— 畫面上要輸入確認才刪得掉。
+ */
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await context.params;
+
+    const tour = await getTour(id);
+    if (!tour) return bad("找不到這筆帶看紀錄。", 404);
+
+    await deleteTour(id);
+    return ok({ deleted: true, title: tour.title });
+  } catch (error) {
+    return fail("admin/tours/[id] DELETE", error);
   }
 }

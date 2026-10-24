@@ -1,8 +1,22 @@
+/**
+ * 線上預約的規則與時段計算。
+ *
+ * 這支沒有任何 I/O，client component 可以直接 import。
+ */
+
 export const BOOKING_RULES = {
   startHour: 10,
-  endHour: 18,
-  slotMinutes: 60,
-  workDays: [1, 2, 3, 4, 5],
+  endHour: 20,
+  /**
+   * 時段格線，15 分鐘。
+   *
+   * 為什麼不是 30 或 60：電話諮詢通常十幾分鐘就講完，
+   * 用 60 分鐘一格會讓一個下午只排得下四個人。
+   * 改成 15 分鐘的格線後，再由見面方式決定實際佔用多久（見 MEET_TYPES）。
+   */
+  slotMinutes: 15,
+  workDays: [1, 2, 3, 4, 5, 6],
+  /** 最少要提前幾小時才能預約，免得客戶約十分鐘後。 */
   leadHours: 2,
   daysAhead: 14
 } as const;
@@ -22,10 +36,16 @@ export const URGENCIES = [
   { key: "explore", label: "先了解" }
 ] as const;
 
+/**
+ * 見面方式。durationMin 決定這種約會佔掉日曆多久。
+ *
+ * 長度不同是刻意的：電話講十幾分鐘就夠，現場面談抓一小時才不會趕。
+ * 全部給同一個長度的話，不是電話約浪費時間，就是面談時間不夠。
+ */
 export const MEET_TYPES = [
-  { key: "office", label: "現場帶看 · 面談", description: "台南市各區，地點另約" },
-  { key: "phone", label: "電話聯繫", description: "由我主動致電" },
-  { key: "video", label: "線上視訊", description: "Google Meet 或 LINE 視訊" }
+  { key: "office", label: "現場帶看 · 面談", description: "台南市各區，地點另約", durationMin: 60 },
+  { key: "phone", label: "電話聯繫", description: "由我主動致電", durationMin: 15 },
+  { key: "video", label: "線上視訊", description: "Google Meet 或 LINE 視訊", durationMin: 30 }
 ] as const;
 
 export const INTENT_KEYS = INTENTS.map((item) => item.key) as readonly string[];
@@ -44,25 +64,48 @@ export function meetTypeLabel(key: string) {
   return MEET_TYPES.find((item) => item.key === key)?.label ?? key;
 }
 
+/** 這種見面方式要佔多久。認不出來就給 30 分鐘。 */
+export function meetDuration(key: string): number {
+  return MEET_TYPES.find((item) => item.key === key)?.durationMin ?? 30;
+}
+
 const TAIPEI_OFFSET = 8 * 60 * 60 * 1000;
 
-export function formatSlotTaipei(value: string | Date) {
+export function formatSlotTaipei(value: string | Date, durationMin = 30) {
   const source = value instanceof Date ? value : new Date(value);
   const local = new Date(source.getTime() + TAIPEI_OFFSET);
   const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-  const year = local.getUTCFullYear();
-  const month = String(local.getUTCMonth() + 1).padStart(2, "0");
-  const date = String(local.getUTCDate()).padStart(2, "0");
-  const hour = local.getUTCHours();
-  const minute = String(local.getUTCMinutes()).padStart(2, "0");
-  const end = new Date(local.getTime() + BOOKING_RULES.slotMinutes * 60_000);
-  return `${year}/${month}/${date}（週${weekdays[local.getUTCDay()]}）${String(hour).padStart(2, "0")}:${minute}–${String(end.getUTCHours()).padStart(2, "0")}:${String(end.getUTCMinutes()).padStart(2, "0")}`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const end = new Date(local.getTime() + durationMin * 60_000);
+
+  return (
+    `${local.getUTCFullYear()}/${pad(local.getUTCMonth() + 1)}/${pad(local.getUTCDate())}` +
+    `（週${weekdays[local.getUTCDay()]}）` +
+    `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}–${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`
+  );
 }
 
 export type OpenSlot = { iso: string; label: string };
 export type OpenDay = { date: string; label: string; slots: OpenSlot[] };
 
-export function generateOpenSlots(now: Date, booked: Set<string>): OpenDay[] {
+/** 一段已經有事的時間（epoch 毫秒）。日曆上的行程與已成立的預約都會轉成這個形狀。 */
+export type BusyRange = { start: number; end: number };
+
+function overlaps(start: number, end: number, busy: readonly BusyRange[]): boolean {
+  return busy.some((range) => start < range.end && end > range.start);
+}
+
+/**
+ * 算出接下來可以預約的時段。
+ *
+ * @param busy 已經有事的時間，包含已成立的預約與 Google 日曆上的行程。
+ * @param durationMin 這次要約多久 —— 會影響哪些格子放得下。
+ */
+export function generateOpenSlots(
+  now: Date,
+  busy: readonly BusyRange[],
+  durationMin = 30
+): OpenDay[] {
   const result: OpenDay[] = [];
   const earliest = now.getTime() + BOOKING_RULES.leadHours * 60 * 60 * 1000;
   const taipeiNow = new Date(now.getTime() + TAIPEI_OFFSET);
@@ -70,6 +113,7 @@ export function generateOpenSlots(now: Date, booked: Set<string>): OpenDay[] {
   const month = taipeiNow.getUTCMonth();
   const date = taipeiNow.getUTCDate();
   const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const pad = (n: number) => String(n).padStart(2, "0");
 
   for (let offset = 0; offset <= BOOKING_RULES.daysAhead; offset += 1) {
     const localDay = new Date(Date.UTC(year, month, date + offset));
@@ -77,23 +121,36 @@ export function generateOpenSlots(now: Date, booked: Set<string>): OpenDay[] {
     if (!(BOOKING_RULES.workDays as readonly number[]).includes(weekday)) continue;
 
     const slots: OpenSlot[] = [];
-    for (let hour = BOOKING_RULES.startHour; hour < BOOKING_RULES.endHour; hour += 1) {
-      const utc = new Date(Date.UTC(
+    const startMin = BOOKING_RULES.startHour * 60;
+    const endMin = BOOKING_RULES.endHour * 60;
+
+    for (let minute = startMin; minute + durationMin <= endMin; minute += BOOKING_RULES.slotMinutes) {
+      // 台北時間換回 UTC：減 8 小時。
+      const startUtc = Date.UTC(
         localDay.getUTCFullYear(),
         localDay.getUTCMonth(),
         localDay.getUTCDate(),
-        hour - 8
-      ));
-      if (utc.getTime() < earliest || booked.has(utc.toISOString())) continue;
+        0,
+        minute - 8 * 60
+      );
+      const endUtc = startUtc + durationMin * 60_000;
+
+      if (startUtc < earliest) continue;
+      if (overlaps(startUtc, endUtc, busy)) continue;
+
+      const h = Math.floor(minute / 60);
+      const m = minute % 60;
+      const eh = Math.floor((minute + durationMin) / 60);
+      const em = (minute + durationMin) % 60;
       slots.push({
-        iso: utc.toISOString(),
-        label: `${String(hour).padStart(2, "0")}:00–${String(hour + 1).padStart(2, "0")}:00`
+        iso: new Date(startUtc).toISOString(),
+        label: `${pad(h)}:${pad(m)}–${pad(eh)}:${pad(em)}`
       });
     }
 
     if (slots.length) {
       result.push({
-        date: `${localDay.getUTCFullYear()}-${String(localDay.getUTCMonth() + 1).padStart(2, "0")}-${String(localDay.getUTCDate()).padStart(2, "0")}`,
+        date: `${localDay.getUTCFullYear()}-${pad(localDay.getUTCMonth() + 1)}-${pad(localDay.getUTCDate())}`,
         label: `${localDay.getUTCMonth() + 1}/${localDay.getUTCDate()} 週${weekdays[weekday]}`,
         slots
       });
@@ -103,19 +160,26 @@ export function generateOpenSlots(now: Date, booked: Set<string>): OpenDay[] {
   return result;
 }
 
-export function isValidSlot(slotIso: string) {
+/**
+ * 這個時段本身合不合法（沒有檢查有沒有被訂走，那是資料庫的事）。
+ * 前端可能被繞過，所以送出時一定要再驗一次。
+ */
+export function isValidSlot(slotIso: string, durationMin = 30): boolean {
   const slot = new Date(slotIso);
   if (Number.isNaN(slot.getTime())) return false;
   if (slot.getTime() < Date.now() + BOOKING_RULES.leadHours * 60 * 60 * 1000) return false;
   if (slot.getTime() > Date.now() + (BOOKING_RULES.daysAhead + 1) * 86_400_000) return false;
-  if (slot.getUTCMinutes() !== 0 || slot.getUTCSeconds() !== 0) return false;
+  if (slot.getUTCSeconds() !== 0 || slot.getUTCMilliseconds() !== 0) return false;
+  // 必須落在 15 分鐘的格線上。
+  if (slot.getUTCMinutes() % BOOKING_RULES.slotMinutes !== 0) return false;
 
   const taipei = new Date(slot.getTime() + TAIPEI_OFFSET);
-  const hour = taipei.getUTCHours();
+  const minute = taipei.getUTCHours() * 60 + taipei.getUTCMinutes();
   const weekday = taipei.getUTCDay();
+
   return (
-    hour >= BOOKING_RULES.startHour &&
-    hour < BOOKING_RULES.endHour &&
+    minute >= BOOKING_RULES.startHour * 60 &&
+    minute + durationMin <= BOOKING_RULES.endHour * 60 &&
     (BOOKING_RULES.workDays as readonly number[]).includes(weekday)
   );
 }

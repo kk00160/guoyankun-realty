@@ -24,11 +24,29 @@ function isLocalHost(hostname: string) {
   );
 }
 
-export function buyerTourUrl(token: string) {
-  if (typeof window === "undefined") return `${SITE_URL}/tour/${token}`;
-
+function base() {
+  if (typeof window === "undefined") return SITE_URL;
   const { hostname, origin } = window.location;
-  return `${isLocalHost(hostname) ? SITE_URL : origin}/tour/${token}`;
+  return isLocalHost(hostname) ? SITE_URL : origin;
+}
+
+/**
+ * 挑選連結：買方在這裡按「想看／略過」。
+ * 從帶看日記複製出去的就是這一條。
+ */
+export function buyerTourUrl(token: string) {
+  return `${base()}/tour/${token}`;
+}
+
+/**
+ * 行程連結：同一個 token 的另一條路徑，買方看到的是排好的順序與每一站的導航。
+ * 從帶看單那一頁複製出去的是這一條。
+ *
+ * 為什麼是兩條網址而不是一個開關：連結是哪一種，你在複製的當下就知道了。
+ * 多做一個「模式」只是把這個你已經知道的答案，變成一個要記得去設定的東西。
+ */
+export function buyerPlanUrl(token: string) {
+  return `${base()}/tour/${token}/plan`;
 }
 
 /**

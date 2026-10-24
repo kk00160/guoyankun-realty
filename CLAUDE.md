@@ -132,11 +132,11 @@ PostgREST 回的是 HTTP 204、`count = null`、`error = null` —— 跟「表�
 `POST /api/admin/tours/[id]/order`，手動送來的直接照抄、後蓋前。
 不要為手動排序另開一支 API —— 兩套寫入規則遲早會對不起來。
 `saveVisitOrder()` 裡有三件事不要拿掉：
-① 先讀一次現有 item 對照，因為 upsert 碰到不屬於這張帶看單的 `listing_id`
+① 先讀一次現有 item 對照，因為 upsert 碰到不屬於這筆帶看紀錄的 `listing_id`
 會**新增**一筆，等於憑空塞一間房子進去；
 ② 沒排進這次順序的一律把站號清成 null，否則會留著上一次排路線的舊號碼，
 重新整理後那間房子會插在中間，而畫面上看不出為什麼；
-③ 一筆都對不上時直接 return，不要往下走 —— 那會把整張單的順序洗掉。
+③ 一筆都對不上時直接 return，不要往下走 —— 那會把整筆帶看紀錄的順序洗掉。
 
 前端（`TourDetail.tsx`）搬順序時**讀 `rowsRef` 不讀 state**。
 實測：同一批事件裡連呼叫三次 `moveItem`，讀 state 的話後兩次拿到的都是搬之前的順序，

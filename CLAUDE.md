@@ -12,9 +12,10 @@
 4. 執行 `npm run check`；遇到上述 Windows 問題時使用 `npm.cmd run check`。
 5. 執行 `npm run build`；遇到上述 Windows 問題時使用 `npm.cmd run build`。
 6. 啟動開發伺服器。先嘗試 `npm run dev -- --port 3000`；Windows 可使用 `npm.cmd run dev -- --port 3000`。若 3000 已占用，自動改用 3001 至 3010 的第一個可用連接埠。
-7. 等待首頁可連線後，回報完整網址與三個入口：
+7. 等待首頁可連線後，回報完整網址與四個入口：
    - `/card`
    - `/card/booking`
+   - `/admin`
    - `/admin/appointments`
 8. 遇到可自行修正的錯誤就修正並重跑，不要只貼錯誤訊息。
 

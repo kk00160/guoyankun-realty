@@ -17,9 +17,10 @@
 4. 執行 `npm run check`；遇到上述 Windows 問題時使用 `npm.cmd run check`。
 5. 執行 `npm run build`；遇到上述 Windows 問題時使用 `npm.cmd run build`。
 6. 啟動開發伺服器。先嘗試 `npm run dev -- --port 3000`；Windows 可使用 `npm.cmd run dev -- --port 3000`。若 3000 已占用，自動改用 3001 至 3010 的第一個可用連接埠。
-7. 等待首頁可連線後，回報完整網址與三個入口：
+7. 等待首頁可連線後，回報完整網址與四個入口：
    - `/card`
    - `/card/booking`
+   - `/admin`
    - `/admin/appointments`
 8. 遇到可自行修正的錯誤就修正並重跑，不要只貼錯誤訊息。
 
@@ -27,7 +28,9 @@
 
 - 不讀取或修改本專案資料夾外的檔案。
 - 不需要 API key、資料庫或第三方帳號。
-- 不真的寄信、不呼叫 LINE、不寫入 Google 日曆。
+- 不真的寄信、不寫入 Google 日曆。
+- **LINE 是例外**（2026-08-09 彥坤指定）：買方按下送出時會 push 一則到他自己的 LINE。
+  只推給他本人、只在買方送出那一刻，不對客戶發任何訊息。理由見 `CLAUDE.md` 的「訊息通知（LINE）」。
 - 不把 `node_modules`、`.next`、`.env` 或 `data/appointments.json` 提交到 Git。
 - 只在使用者明確要求時，才修改姓名、電話、社群連結與品牌色。
 

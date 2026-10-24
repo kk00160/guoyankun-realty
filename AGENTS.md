@@ -26,11 +26,11 @@
 - 不把 `node_modules`、`.next`、`.env` 或 `data/appointments.json` 提交到 Git。
 - 只在使用者明確要求時，才修改姓名、電話、社群連結與品牌色。
 
-## 帶看助手（案源庫 → 買方勾選 → 路線 → 帶看單）
+## 買方配案系統（配案 → 買方勾選 → 路線 → 帶看單）
 
 2026-08 新增的第二個模組，跟預約系統各自獨立。
 
-- 入口：`/admin/listings`（案源庫）、`/admin/tours`（帶看單）、`/tour/[token]`（買方，免登入）
+- 入口：`/admin/listings`（買方配案系統）、`/admin/tours`（帶看日記）、`/tour/[token]`（買方，免登入）
 - 開關：`TOUR_ENABLED`。跟 `BOOKING_ENABLED` **刻意分開**，兩者前提條件不同，不要合併。
 - 儲存：Supabase Postgres（`supabase/schema.sql`），不是本機 JSON 檔。
   預約系統仍維持檔案版本，兩套併存是刻意的取捨，不要順手統一。

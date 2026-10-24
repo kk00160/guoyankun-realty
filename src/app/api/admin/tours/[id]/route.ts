@@ -13,7 +13,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const body = await readJson(request);
 
     const tour = await getTour(id);
-    if (!tour) return bad("找不到這張帶看單。", 404);
+    if (!tour) return bad("找不到這筆帶看紀錄。", 404);
 
     // 換一把新鑰匙：舊連結立刻失效。買方把連結轉傳給別人時用這個。
     if (body.rotateToken === true) {
@@ -23,7 +23,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     if (typeof body.status === "string") {
       const status = body.status as TourStatus;
-      if (!STATUSES.includes(status)) return bad("不支援的帶看單狀態。");
+      if (!STATUSES.includes(status)) return bad("不支援的帶看紀錄狀態。");
       await patchTour(id, { status });
       return ok({ status });
     }

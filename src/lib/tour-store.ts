@@ -127,7 +127,7 @@ export type ListingPage = {
  * 依條件查案源。
  *
  * 篩選、排序、分頁全部在資料庫做。
- * 之前是撈 500 筆回來讓瀏覽器篩 —— 案源庫長到上萬筆之後，
+ * 之前是撈 500 筆回來讓瀏覽器篩 —— 案源長到上萬筆之後，
  * 那會安靜地給出殘缺結果：你搜「東區」看到 8 筆，就以為東區只有 8 筆。
  */
 export async function listListings(query: ListingQuery): Promise<ListingPage> {
@@ -353,7 +353,7 @@ export async function patchListing(id: string, input: Partial<ListingInput>) {
 }
 
 // ---------------------------------------------------------------
-// 帶看單
+// 帶看紀錄
 // ---------------------------------------------------------------
 
 export type TourWithCount = Tour & {
@@ -377,7 +377,7 @@ export async function listTours(): Promise<TourWithCount[]> {
   const rows = await readList(
     () =>
       db().from("tours").select("*").order("created_at", { ascending: false }).limit(200),
-    "讀取帶看單"
+    "讀取帶看紀錄"
   );
 
   const tours = rows.map((row) => toTour(row));
@@ -396,7 +396,7 @@ export async function listTours(): Promise<TourWithCount[]> {
   );
 
   // 只撈 id + images 來數「照片幾張」。一次撈完再在 JS 裡對，
-  // 比每張帶看單各發一次查詢便宜得多。
+  // 比每筆帶看紀錄各發一次查詢便宜得多。
   const listingIds = [...new Set(items.map((item) => item.listing_id))];
   const photoCount = new Map<string, number>();
   if (listingIds.length > 0) {
@@ -422,7 +422,7 @@ export async function listTours(): Promise<TourWithCount[]> {
 }
 
 export async function getTour(id: string): Promise<Tour | null> {
-  const data = await readOne(() => db().from("tours").select("*").eq("id", id).maybeSingle(), "讀取帶看單");
+  const data = await readOne(() => db().from("tours").select("*").eq("id", id).maybeSingle(), "讀取帶看紀錄");
   return data ? toTour(data as Record<string, unknown>) : null;
 }
 
@@ -430,7 +430,7 @@ export async function getTour(id: string): Promise<Tour | null> {
 export async function getTourByToken(token: string): Promise<Tour | null> {
   if (!isValidTokenFormat(token)) return null;
 
-  const data = await readOne(() => db().from("tours").select("*").eq("token", token).maybeSingle(), "讀取帶看單");
+  const data = await readOne(() => db().from("tours").select("*").eq("token", token).maybeSingle(), "讀取帶看紀錄");
   return data ? toTour(data as Record<string, unknown>) : null;
 }
 
@@ -456,7 +456,7 @@ export async function createTour(input: {
     .select("*")
     .single();
 
-  if (error) throw new Error(`建立帶看單失敗：${error.message}`);
+  if (error) throw new Error(`建立帶看紀錄失敗：${error.message}`);
   return toTour(data as Record<string, unknown>);
 }
 
@@ -486,7 +486,7 @@ export async function patchTour(
   if (Object.keys(row).length === 0) return;
 
   const { error } = await db().from("tours").update(row).eq("id", id);
-  if (error) throw new Error(`更新帶看單失敗：${error.message}`);
+  if (error) throw new Error(`更新帶看紀錄失敗：${error.message}`);
 }
 
 /**
@@ -512,7 +512,7 @@ export async function rotateTourToken(id: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------
-// 帶看單裡的物件
+// 帶看紀錄裡的物件
 // ---------------------------------------------------------------
 
 export type TourEntry = TourItem & { listing: Listing };
@@ -555,7 +555,7 @@ export async function listTourEntries(tourId: string): Promise<TourEntry[]> {
 }
 
 /**
- * 加物件進帶看單。
+ * 加物件進帶看紀錄。
  *
  * needs_review 的案源在這裡就擋掉 —— 這是「買方頁永遠看不到未確認資料」的第一道防線，
  * 買方頁本身還有第二道。兩道都擋是刻意的：這是整個系統最不能出錯的地方。
@@ -579,7 +579,7 @@ export async function addTourItems(tourId: string, listingIds: string[]) {
         usable.map((row) => ({ tour_id: tourId, listing_id: row.id })),
         { onConflict: "tour_id,listing_id", ignoreDuplicates: true }
       );
-    if (error) throw new Error(`加入帶看單失敗：${error.message}`);
+    if (error) throw new Error(`加入帶看紀錄失敗：${error.message}`);
   }
 
   return { added: usable.length, skipped };
@@ -635,8 +635,8 @@ export async function setBuyerChoice(tourId: string, listingId: string, choice: 
  * 一次 upsert 寫完，不要一筆一筆 update：手動微調是連續按的動作，
  * 每按一下就跟新加坡來回 N 趟，八間房子就是八趟，按起來會有明顯延遲。
  *
- * 先讀一次現有的 item 不是多餘的 —— upsert 碰到不在這張帶看單裡的
- * listing_id 會「新增」一筆，等於憑空把一間房子塞進帶看單。先對過再寫。
+ * 先讀一次現有的 item 不是多餘的 —— upsert 碰到不在這筆帶看紀錄裡的
+ * listing_id 會「新增」一筆，等於憑空把一間房子塞進帶看紀錄。先對過再寫。
  */
 export async function saveVisitOrder(tourId: string, orderedListingIds: string[]): Promise<string[]> {
   const existing = await readList(
@@ -648,7 +648,7 @@ export async function saveVisitOrder(tourId: string, orderedListingIds: string[]
   const ordered = orderedListingIds.filter((listingId) => known.has(listingId));
   const inOrder = new Set(ordered);
 
-  // 送來的沒有一筆對得上（例如另一個分頁把整張帶看單換掉了）就什麼都不要動。
+  // 送來的沒有一筆對得上（例如另一個分頁把整筆帶看紀錄換掉了）就什麼都不要動。
   // 下面會把沒排到的站號清成 null —— 在這種情況下那等於默默把整張單的順序洗掉。
   if (ordered.length === 0) return [];
 

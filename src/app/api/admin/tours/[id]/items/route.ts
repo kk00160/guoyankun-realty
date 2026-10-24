@@ -6,13 +6,13 @@ export const dynamic = "force-dynamic";
 
 const MAX_ITEMS_PER_CALL = 30;
 
-/** 把案源加進帶看單。待確認（needs_review）的會被擋下並回報，不會默默消失。 */
+/** 把案源加進帶看紀錄。待確認（needs_review）的會被擋下並回報，不會默默消失。 */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     const body = await readJson(request);
 
-    if (!(await getTour(id))) return bad("找不到這張帶看單。", 404);
+    if (!(await getTour(id))) return bad("找不到這筆帶看紀錄。", 404);
 
     const listingIds = Array.isArray(body.listingIds) ? body.listingIds.map(String) : [];
     if (listingIds.length === 0) return bad("請先選擇要加入的物件。");

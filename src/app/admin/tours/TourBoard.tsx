@@ -71,7 +71,7 @@ export default function TourBoard({ initialTours }: { initialTours: TourWithCoun
       `· 這筆帶看紀錄裡的 ${tour.itemCount} 間物件關聯會一起消失\n` +
       `· 買方勾選的結果也會消失\n` +
       `· 你傳給買方的那條連結會立刻打不開\n\n` +
-      "案源庫裡的物件本身不會被刪掉。這個動作沒辦法復原。";
+      "案源資料本身不會被刪掉。這個動作沒辦法復原。";
     if (!window.confirm(warn)) return;
 
     setBusy(tour.id);

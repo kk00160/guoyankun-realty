@@ -11,7 +11,7 @@
 create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------
--- listings：案源庫（匯入進來的 + 你自己手動建的）
+-- listings：案源資料（匯入進來的 + 你自己手動建的）
 -- ---------------------------------------------------------------
 create table if not exists public.listings (
   id            uuid primary key default gen_random_uuid(),
@@ -24,7 +24,7 @@ create table if not exists public.listings (
   title         text        not null,
   district      text,                    -- 行政區，例：東區
   address       text,
-  lat           double precision,        -- 排路線用，抓不到就不能進帶看單
+  lat           double precision,        -- 排路線用，抓不到就不能進帶看紀錄
   lng           double precision,
 
   total_price   numeric,                 -- 總價（萬元）
@@ -37,7 +37,7 @@ create table if not exists public.listings (
   parking       text,
   images        text[]      not null default '{}',  -- 只存原始刊登的圖片網址，不轉存檔案
 
-  -- active     ：資料通過合理性閘門，可以放進帶看單給買方看
+  -- active     ：資料通過合理性閘門，可以放進帶看紀錄給買方看
   -- needs_review：閘門沒過，只在後台出現，永遠不會出現在買方頁
   -- archived   ：你手動封存
   -- sold       ：已成交／已下架
@@ -71,7 +71,7 @@ create index if not exists listings_dedupe_idx
   on public.listings (district, total_price, ping);
 
 -- ---------------------------------------------------------------
--- tours：一張帶看單 = 一個買方 + 一批物件 + 一個公開連結
+-- tours：一筆帶看紀錄 = 一個買方 + 一批物件 + 一個公開連結
 -- ---------------------------------------------------------------
 create table if not exists public.tours (
   id            uuid primary key default gen_random_uuid(),
@@ -107,7 +107,7 @@ alter table public.tours add column if not exists submitted_at timestamptz;
 create index if not exists tours_status_idx on public.tours (status);
 
 -- ---------------------------------------------------------------
--- tour_items：帶看單裡的每一間房，以及買方對它的選擇
+-- tour_items：帶看紀錄裡的每一間房，以及買方對它的選擇
 -- ---------------------------------------------------------------
 create table if not exists public.tour_items (
   id           uuid primary key default gen_random_uuid(),

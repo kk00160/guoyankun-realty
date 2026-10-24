@@ -21,7 +21,7 @@ export const BOOKING_LINK_PROPS = BOOKING_ENABLED
   : { target: "_blank", rel: "noreferrer" as const };
 
 /**
- * 帶看助手（案源庫、帶看單、買方勾選頁）的總開關。
+ * 帶看助手（買方配案系統、帶看日記、買方勾選頁）的總開關。
  *
  * 跟 BOOKING_ENABLED 刻意分開，因為兩者的前提條件不同：
  * 預約系統卡在「資料存本機檔案」，帶看系統則是走 Supabase，可以先單獨上線。

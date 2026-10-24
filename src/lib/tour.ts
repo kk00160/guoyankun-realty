@@ -1,5 +1,5 @@
 /**
- * 帶看單的型別、狀態判斷與買方連結 token。
+ * 帶看紀錄的型別、狀態判斷與買方連結 token。
  *
  * 這支檔案保持「純函式、無 I/O」，跟 booking.ts 一樣可以被 client component 直接 import。
  */
@@ -146,7 +146,7 @@ export function toTourItem(row: Record<string, unknown>): TourItem {
   };
 }
 
-/** 帶看單的日期時間，統一用台北時區顯示。 */
+/** 帶看紀錄的日期時間，統一用台北時區顯示。 */
 export function formatTourDate(iso: string) {
   if (!iso) return "—";
   const date = new Date(iso);

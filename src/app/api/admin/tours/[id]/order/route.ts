@@ -27,7 +27,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const scope = body.scope === "remaining" ? "remaining" : "interested";
 
     const tour = await getTour(id);
-    if (!tour) return bad("找不到這張帶看單。", 404);
+    if (!tour) return bad("找不到這筆帶看紀錄。", 404);
 
     // --- 手動排序 ---
     // 不算路線、不回 mapUrls：這裡是「我說了算」，不需要再給一次演算法的意見。
@@ -37,11 +37,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         .slice(0, 200);
       if (manual.length === 0) return bad("沒有收到要排的物件。");
 
-      // saveVisitOrder 會再對一次這些 id 是不是真的在這張帶看單裡，
+      // saveVisitOrder 會再對一次這些 id 是不是真的在這筆帶看紀錄裡，
       // 回傳的是真的存進去的那些。
       const saved = await saveVisitOrder(id, [...new Set(manual)]);
       if (saved.length === 0) {
-        return bad("這些物件已經不在這張帶看單裡了，順序沒有存。重新整理這一頁看目前的內容。");
+        return bad("這些物件已經不在這筆帶看紀錄裡了，順序沒有存。重新整理這一頁看目前的內容。");
       }
       return ok({ order: saved });
     }
@@ -55,7 +55,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return bad(
         scope === "interested"
           ? "買方還沒有勾任何一間「想看」。"
-          : "這張帶看單裡沒有可以排的物件。"
+          : "這筆帶看紀錄裡沒有可以排的物件。"
       );
     }
 

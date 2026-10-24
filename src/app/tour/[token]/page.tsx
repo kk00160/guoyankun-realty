@@ -35,7 +35,7 @@ export default async function BuyerTourPage({ params }: { params: Promise<{ toke
   /**
    * 第二道防線：只有 active 的案源會送到買方眼前。
    *
-   * 加入帶看單時已經擋過一次待確認的資料（見 tour-store.ts 的 addTourItems），
+   * 加入帶看紀錄時已經擋過一次待確認的資料（見 tour-store.ts 的 addTourItems），
    * 這裡再擋一次 —— 物件有可能是加入之後才被標記成待確認的。
    * 這是整個系統最不能出錯的地方，所以兩道都留著。
    */
